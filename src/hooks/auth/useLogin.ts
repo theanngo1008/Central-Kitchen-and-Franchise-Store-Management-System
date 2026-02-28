@@ -3,14 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { authApi, LoginRequest, LoginData, AuthResponse } from '@/api';
 
 const getRoleDashboardPath = (role: string): string => {
+    // Both 'Manager' and 'manager' are handled effectively
+    const normalizedRole = role.toLowerCase();
     const paths: Record<string, string> = {
-        'Admin': '/admin',
-        'SupplyCoordinator': '/coordinator',
-        'KitchenStaff': '/kitchen',
-        'StoreStaff': '/store',
-        'Manager': '/manager',
+        'admin': '/admin',
+        'supplycoordinator': '/coordinator',
+        'kitchenstaff': '/kitchen',
+        'storestaff': '/store',
+        'manager': '/manager',
     };
-    return paths[role] || '/admin';
+    return paths[normalizedRole] || '/';
 };
 
 interface UseLoginOptions {

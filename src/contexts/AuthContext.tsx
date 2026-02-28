@@ -15,19 +15,21 @@ interface AuthContextType {
   login: (username: string, password: string) => boolean;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const mapApiRoleToUserRole = (role: string): UserRole => {
+  const normalizedRole = role.toLowerCase();
   const roleMap: Record<string, UserRole> = {
-    'Admin': 'admin',
-    'StoreStaff': 'franchise_store',
-    'KitchenStaff': 'central_kitchen',
-    'SupplyCoordinator': 'supply_coordinator',
-    'Manager': 'manager',
+    'admin': 'admin',
+    'storestaff': 'franchise_store',
+    'kitchenstaff': 'central_kitchen',
+    'supplycoordinator': 'supply_coordinator',
+    'manager': 'manager',
   };
-  return roleMap[role] || 'admin';
+  return roleMap[normalizedRole] || 'admin';
 };
 
 const DEMO_ACCOUNTS: Record<string, { password: string; user: User }> = {
@@ -81,6 +83,7 @@ const DEMO_ACCOUNTS: Record<string, { password: string; user: User }> = {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -96,6 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         displayName: username,
       });
     }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -146,7 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

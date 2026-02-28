@@ -67,7 +67,6 @@ const getNavItems = (role: UserRole): NavItem[] => {
       { label: 'Danh mục cửa hàng', path: '/manager/store-catalog', icon: <Store size={20} /> },
       { label: 'Công thức & BOM', path: '/manager/recipes', icon: <BookOpen size={20} /> },
       { label: 'Tồn kho tổng', path: '/manager/inventory', icon: <Warehouse size={20} /> },
-      { label: 'Báo cáo', path: '/manager/reports', icon: <BarChart3 size={20} /> },
     ],
     admin: [
       { label: 'Trang chủ', path: '/admin', icon: <LayoutDashboard size={20} /> },
