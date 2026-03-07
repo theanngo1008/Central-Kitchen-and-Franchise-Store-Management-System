@@ -31,9 +31,8 @@ type Props = {
   onUpdate: (id: number, payload: UpdateUserPayload) => void | Promise<void>;
 };
 
-const ROLE_OPTIONS: Array<{ label: string; value: number }> = [
-  { label: "Admin", value: 1 },
-  { label: "Manager", value: 9 },
+
+const CREATE_ROLE_OPTIONS: Array<{ label: string; value: number }> = [
   { label: "SupplyCoordinator", value: 3 },
   { label: "KitchenStaff", value: 4 },
   { label: "StoreStaff", value: 5 },
@@ -48,10 +47,25 @@ export const UserUpsertModal: React.FC<Props> = ({
 }) => {
   const isEdit = !!selectedUser;
 
+  const normalizedRoleName = (selectedUser?.roleName || "").toLowerCase();
+
+  const isProtectedRole =
+    selectedUser?.roleId === 1 ||
+    selectedUser?.roleId === 9 ||
+    normalizedRoleName === "admin" ||
+    normalizedRoleName === "manager";
+
+  const roleOptions = useMemo(() => {
+    if (!isEdit) return CREATE_ROLE_OPTIONS;
+    if (isProtectedRole) return [];
+    return CREATE_ROLE_OPTIONS;
+  }, [isEdit, isProtectedRole]);
+
+
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [roleId, setRoleId] = useState<number>(ROLE_OPTIONS[0].value);
+  const [roleId, setRoleId] = useState<number>(CREATE_ROLE_OPTIONS[0].value);
   const [status, setStatus] = useState<UserStatus>("ACTIVE");
 
   useEffect(() => {
@@ -67,7 +81,7 @@ export const UserUpsertModal: React.FC<Props> = ({
       setUsername("");
       setEmail("");
       setPassword("");
-      setRoleId(ROLE_OPTIONS[0].value);
+      setRoleId(CREATE_ROLE_OPTIONS[0].value);
       setStatus("ACTIVE");
     }
   }, [open, selectedUser]);
@@ -161,23 +175,31 @@ export const UserUpsertModal: React.FC<Props> = ({
           {/* Shared: role */}
           <div>
             <Label>Vai trò</Label>
-            <Select
-              value={String(roleId)}
-              onValueChange={(v) => setRoleId(Number(v))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn vai trò" />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLE_OPTIONS.map((r) => (
-                  <SelectItem key={r.value} value={String(r.value)}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
+            {isEdit && isProtectedRole ? (
+              <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm font-medium">
+                {normalizedRoleName === "admin" || selectedUser?.roleId === 1
+                  ? "Admin"
+                  : "Manager"}
+              </div>
+            ) : (
+              <Select
+                value={String(roleId)}
+                onValueChange={(v) => setRoleId(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn vai trò" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((r) => (
+                    <SelectItem key={r.value} value={String(r.value)}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           {/* Edit-only: status */}
           {isEdit && (
             <div>
