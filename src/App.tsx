@@ -10,6 +10,10 @@ import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 // Store Pages
 import CreateOrderPage from "@/pages/store/CreateOrder";
+import StoreDashboard from "@/pages/store/StoreDashboard";
+import OrderList from "@/pages/store/OrderList";
+import ReceiveGoods from "@/pages/store/ReceiveGoods";
+import StoreInventory from "@/pages/store/StoreInventory";
 // Kitchen Pages
 import KitchenDashboard from "@/pages/kitchen/KitchenDashboard";
 import IncomingOrders from "@/pages/kitchen/IncomingOrders";
@@ -58,12 +62,23 @@ const App = () => (
 
             <Route element={<MainLayout />}>
               <Route path="/profile" element={<Profile />} />
+              
               {/* Store Routes */}
+              <Route path="/stores/:storeId" element={<StoreDashboard />} />
               <Route
-                path="/store"
-                element={<Navigate to="/store/create-order" replace />}
+                path="/stores/:storeId/orders/new"
+                element={<CreateOrderPage />}
               />
-              <Route path="/store/create-order" element={<CreateOrderPage />} />
+              <Route path="/stores/:storeId/orders" element={<OrderList />} />
+              <Route
+                path="/stores/:storeId/receive"
+                element={<ReceiveGoods />}
+              />
+              <Route
+                path="/stores/:storeId/inventory"
+                element={<StoreInventory />}
+              />
+
               {/* Kitchen Routes */}
               <Route path="/kitchen" element={<KitchenDashboard />} />
               <Route path="/kitchen/orders" element={<IncomingOrders />} />

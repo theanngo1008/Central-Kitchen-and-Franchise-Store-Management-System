@@ -2,16 +2,20 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi, LoginRequest, LoginData, AuthResponse } from '@/api';
 
-const getRoleDashboardPath = (role: string): string => {
-    // Both 'Manager' and 'manager' are handled effectively
-    const normalizedRole = role.toLowerCase();
+const getRoleDashboardPath = (data: LoginData): string => {
+    const normalizedRole = data.role.toLowerCase();
+
     const paths: Record<string, string> = {
-        'admin': '/admin',
-        'supplycoordinator': '/coordinator',
-        'kitchenstaff': '/kitchen',
-        'storestaff': '/store',
-        'manager': '/manager',
+        admin: '/admin',
+        supplycoordinator: '/coordinator',
+        kitchenstaff: '/kitchen',
+        manager: '/manager',
     };
+
+    if (normalizedRole === 'storestaff') {
+        return `/stores/${data.franchiseId}`;
+    }
+
     return paths[normalizedRole] || '/';
 };
 
@@ -32,7 +36,7 @@ export const useLogin = (options: UseLoginOptions = {}) => {
                 onSuccess?.(response);
 
                 if (redirectOnSuccess) {
-                    const dashboardPath = getRoleDashboardPath(response.data.role);
+                    const dashboardPath = getRoleDashboardPath(response.data);
                     navigate(dashboardPath, { replace: true });
                 }
             }

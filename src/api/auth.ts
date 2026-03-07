@@ -10,6 +10,7 @@ export interface LoginData {
     tokenType: string;
     expiresInSeconds: number;
     userId: number;
+    franchiseId: number;
     username: string;
     role: string;
 }
@@ -33,6 +34,7 @@ export const authApi = {
         if (response.success && response.data?.accessToken) {
             localStorage.setItem('accessToken', response.data.accessToken);
             localStorage.setItem('userId', String(response.data.userId));
+            localStorage.setItem('franchiseId', String(response.data.franchiseId));
             localStorage.setItem('username', response.data.username);
             localStorage.setItem('userRole', response.data.role);
 
@@ -57,6 +59,7 @@ export const authApi = {
         return {
             userId: localStorage.getItem('userId'),
             username: localStorage.getItem('username'),
+            franchiseId: localStorage.getItem('franchiseId'),
             role: localStorage.getItem('userRole'),
         };
     },
