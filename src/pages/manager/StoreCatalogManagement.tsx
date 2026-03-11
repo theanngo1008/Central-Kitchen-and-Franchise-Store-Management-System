@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useStoreCatalog, useAssignProduct, useUpdateCatalogPrice, useUpdateCatalogStatus } from '@/hooks/storeCatalog';
+import { useStoreCatalog, useAssignProduct, useUpdateCatalogPrice, useUpdateCatalogStatus } from "@/hooks/storeCatalog/useStoreCatalog";
 import { useProducts } from '@/hooks/products';
 import { useQuery } from '@tanstack/react-query';
 import { adminFranchisesApi } from '@/api/admin/franchises.api';

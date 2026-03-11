@@ -9,8 +9,8 @@ import Login from "@/pages/Login";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 // Store Pages
+import CreateOrderPage from "@/pages/store/CreateOrder";
 import StoreDashboard from "@/pages/store/StoreDashboard";
-import CreateOrder from "@/pages/store/CreateOrder";
 import OrderList from "@/pages/store/OrderList";
 import ReceiveGoods from "@/pages/store/ReceiveGoods";
 import StoreInventory from "@/pages/store/StoreInventory";
@@ -41,7 +41,6 @@ import SupplierManagement from "@/pages/manager/SupplierManagement";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UserManagement from "@/pages/admin/UserManagement";
 
-
 import FranchiseDetail from "@/pages/admin/FranchiseManagement/FranchiseDetail";
 
 import SystemConfig from "@/pages/admin/SystemConfig";
@@ -64,12 +63,23 @@ const App = () => (
 
             <Route element={<MainLayout />}>
               <Route path="/profile" element={<Profile />} />
+              
               {/* Store Routes */}
-              <Route path="/store" element={<StoreDashboard />} />
-              <Route path="/store/orders/new" element={<CreateOrder />} />
-              <Route path="/store/orders" element={<OrderList />} />
-              <Route path="/store/receive" element={<ReceiveGoods />} />
-              <Route path="/store/inventory" element={<StoreInventory />} />
+              <Route path="/stores/:storeId" element={<StoreDashboard />} />
+              <Route
+                path="/stores/:storeId/orders/new"
+                element={<CreateOrderPage />}
+              />
+              <Route path="/stores/:storeId/orders" element={<OrderList />} />
+              <Route
+                path="/stores/:storeId/receive"
+                element={<ReceiveGoods />}
+              />
+              <Route
+                path="/stores/:storeId/inventory"
+                element={<StoreInventory />}
+              />
+
               {/* Kitchen Routes */}
               <Route path="/kitchen" element={<KitchenDashboard />} />
               <Route path="/kitchen/orders" element={<IncomingOrders />} />
@@ -120,9 +130,12 @@ const App = () => (
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
-          
-              <Route path="/admin/franchises/:franchiseId" element={<FranchiseDetail />} />
-            
+
+              <Route
+                path="/admin/franchises/:franchiseId"
+                element={<FranchiseDetail />}
+              />
+
               <Route path="/admin/rbac" element={<RbacManagement />} />
               <Route path="/admin/config" element={<SystemConfig />} />
               <Route path="/admin/locations" element={<LocationManagement />} />
