@@ -15,28 +15,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 
+import { adminFranchisesApi } from "@/api/admin/franchises.api";
+import type {
+  AdminFranchise,
+  WorkAssignmentType,
+} from "@/types/admin/franchise.types";
 import type {
   AdminUser,
-  CreateUserPayload,
   UpdateUserPayload,
   UserStatus,
 } from "@/types/admin/user.types";
+
+export interface CreateUserFormPayload {
+  username: string;
+  email: string;
+  password: string;
+  roleId: number;
+  assignmentType?: WorkAssignmentType;
+  workplaceId?: number | null;
+}
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedUser: AdminUser | null;
-  onCreate: (payload: CreateUserPayload) => void | Promise<void>;
+  onCreate: (payload: CreateUserFormPayload) => void | Promise<void>;
   onUpdate: (id: number, payload: UpdateUserPayload) => void | Promise<void>;
 };
 
+const ROLE_SUPPLY_COORDINATOR = 3;
+const ROLE_KITCHEN_STAFF = 4;
+const ROLE_STORE_STAFF = 5;
 
 const CREATE_ROLE_OPTIONS: Array<{ label: string; value: number }> = [
-  { label: "SupplyCoordinator", value: 3 },
-  { label: "KitchenStaff", value: 4 },
-  { label: "StoreStaff", value: 5 },
+  { label: "SupplyCoordinator", value: ROLE_SUPPLY_COORDINATOR },
+  { label: "KitchenStaff", value: ROLE_KITCHEN_STAFF },
+  { label: "StoreStaff", value: ROLE_STORE_STAFF },
 ];
+
+const resolveDefaultAssignmentType = (
+  roleId: number,
+): WorkAssignmentType | "" => {
+  if (roleId === ROLE_STORE_STAFF) return "FRANCHISE";
+  if (roleId === ROLE_KITCHEN_STAFF) return "CENTRAL_KITCHEN";
+  return "";
+};
 
 export const UserUpsertModal: React.FC<Props> = ({
   open,
@@ -61,15 +86,32 @@ export const UserUpsertModal: React.FC<Props> = ({
     return CREATE_ROLE_OPTIONS;
   }, [isEdit, isProtectedRole]);
 
-
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [roleId, setRoleId] = useState<number>(CREATE_ROLE_OPTIONS[0].value);
   const [status, setStatus] = useState<UserStatus>("ACTIVE");
 
+  const [franchises, setFranchises] = useState<AdminFranchise[]>([]);
+  const [loadingFranchises, setLoadingFranchises] = useState(false);
+  const [assignmentType, setAssignmentType] = useState<WorkAssignmentType | "">(
+    "",
+  );
+  const [workplaceId, setWorkplaceId] = useState<number | null>(null);
+
+  const [errors, setErrors] = useState<{
+    username?: string;
+    email?: string;
+    password?: string;
+    roleId?: string;
+    assignmentType?: string;
+    workplaceId?: string;
+  }>({});
+
   useEffect(() => {
     if (!open) return;
+
+    setErrors({});
 
     if (selectedUser) {
       setUsername(selectedUser.username);
@@ -77,29 +119,162 @@ export const UserUpsertModal: React.FC<Props> = ({
       setPassword("");
       setRoleId(selectedUser.roleId);
       setStatus(selectedUser.status);
+      setAssignmentType("");
+      setWorkplaceId(null);
     } else {
+      const defaultRoleId = CREATE_ROLE_OPTIONS[0].value;
       setUsername("");
       setEmail("");
       setPassword("");
-      setRoleId(CREATE_ROLE_OPTIONS[0].value);
+      setRoleId(defaultRoleId);
       setStatus("ACTIVE");
+      setAssignmentType(resolveDefaultAssignmentType(defaultRoleId));
+      setWorkplaceId(null);
     }
   }, [open, selectedUser]);
+
+  useEffect(() => {
+    if (!open || isEdit) return;
+
+    const run = async () => {
+      try {
+        setLoadingFranchises(true);
+        const data = await adminFranchisesApi.list();
+        setFranchises(data || []);
+      } catch (e) {
+        console.error(e);
+        toast.error("Không tải được danh sách cửa hàng / bếp");
+      } finally {
+        setLoadingFranchises(false);
+      }
+    };
+
+    run();
+  }, [open, isEdit]);
+
+  const isSupplyCoordinator = roleId === ROLE_SUPPLY_COORDINATOR;
+  const isKitchenStaff = roleId === ROLE_KITCHEN_STAFF;
+  const isStoreStaff = roleId === ROLE_STORE_STAFF;
+
+  const effectiveAssignmentType = useMemo<WorkAssignmentType | "">(() => {
+    if (isStoreStaff) return "FRANCHISE";
+    if (isKitchenStaff) return "CENTRAL_KITCHEN";
+    return assignmentType;
+  }, [isStoreStaff, isKitchenStaff, assignmentType]);
+
+  const showWorkplaceSection = !isEdit;
+
+  const storeOptions = useMemo(
+    () => franchises.filter((f) => f.type === "STORE"),
+    [franchises],
+  );
+
+  const kitchenOptions = useMemo(
+    () => franchises.filter((f) => f.type === "CENTRAL_KITCHEN"),
+    [franchises],
+  );
+
+  const workplaceOptions = useMemo(() => {
+    if (effectiveAssignmentType === "FRANCHISE") return storeOptions;
+    if (effectiveAssignmentType === "CENTRAL_KITCHEN") return kitchenOptions;
+    return [];
+  }, [effectiveAssignmentType, storeOptions, kitchenOptions]);
+
+  const selectedWorkplace = useMemo(() => {
+    return (
+      workplaceOptions.find((item) => item.franchiseId === workplaceId) || null
+    );
+  }, [workplaceOptions, workplaceId]);
+
+  useEffect(() => {
+    if (!open || isEdit) return;
+    setWorkplaceId(null);
+  }, [roleId, assignmentType, open, isEdit]);
 
   const canSubmit = useMemo(() => {
     if (isEdit) {
       return !!roleId && !!status;
     }
-    return (
-      username.trim().length > 0 &&
+
+    const baseValid =
+      username.trim().length >= 3 &&
       email.trim().length > 0 &&
-      password.trim().length > 0 &&
-      !!roleId
-    );
-  }, [isEdit, username, email, password, roleId, status]);
+      password.length >= 8 &&
+      !!roleId;
+
+    if (!baseValid) return false;
+    if (!showWorkplaceSection) return true;
+    if (!effectiveAssignmentType) return false;
+    if (!workplaceId) return false;
+
+    return true;
+  }, [
+    isEdit,
+    username,
+    email,
+    password,
+    roleId,
+    status,
+    showWorkplaceSection,
+    effectiveAssignmentType,
+    workplaceId,
+  ]);
+
+  const validateForm = () => {
+    const nextErrors: {
+      username?: string;
+      email?: string;
+      password?: string;
+      roleId?: string;
+      assignmentType?: string;
+      workplaceId?: string;
+    } = {};
+
+    if (!isEdit) {
+      if (username.trim().length < 3) {
+        nextErrors.username = "Tên đăng nhập phải từ 3 ký tự trở lên";
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email.trim()) {
+        nextErrors.email = "Vui lòng nhập email";
+      } else if (!emailRegex.test(email.trim())) {
+        nextErrors.email = "Email không hợp lệ";
+      }
+
+      if (password.length < 8) {
+        nextErrors.password = "Mật khẩu phải từ 8 ký tự trở lên";
+      }
+
+      if (!roleId) {
+        nextErrors.roleId = "Vui lòng chọn vai trò";
+      }
+
+      if (showWorkplaceSection) {
+        if (!effectiveAssignmentType) {
+          nextErrors.assignmentType = "Vui lòng chọn loại nơi làm việc";
+        }
+
+        if (!workplaceId) {
+          nextErrors.workplaceId = "Vui lòng chọn nơi làm việc";
+        }
+      }
+    } else {
+      if (!roleId) {
+        nextErrors.roleId = "Vui lòng chọn vai trò";
+      }
+
+      if (!status) {
+        nextErrors.roleId = "Vui lòng chọn trạng thái";
+      }
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!validateForm()) return;
 
     if (selectedUser) {
       await onUpdate(selectedUser.userId, { roleId, status });
@@ -111,6 +286,8 @@ export const UserUpsertModal: React.FC<Props> = ({
       email: email.trim(),
       password,
       roleId,
+      assignmentType: effectiveAssignmentType || undefined,
+      workplaceId,
     });
   };
 
@@ -124,16 +301,23 @@ export const UserUpsertModal: React.FC<Props> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Create-only fields */}
           {!isEdit && (
             <>
               <div>
                 <Label>Tên đăng nhập</Label>
                 <Input
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setErrors((prev) => ({ ...prev, username: undefined }));
+                  }}
                   placeholder="username"
                 />
+                {errors.username && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.username}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -141,9 +325,17 @@ export const UserUpsertModal: React.FC<Props> = ({
                 <Input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
                   placeholder="email@example.com"
                 />
+                {errors.email && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -151,14 +343,21 @@ export const UserUpsertModal: React.FC<Props> = ({
                 <Input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
                   placeholder="******"
                 />
+                {errors.password && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.password}
+                  </p>
+                )}
               </div>
             </>
           )}
 
-          {/* Edit-only info (readonly) */}
           {isEdit && (
             <div className="rounded-lg border bg-muted/20 p-3 text-sm">
               <div className="flex justify-between">
@@ -172,7 +371,6 @@ export const UserUpsertModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Shared: role */}
           <div>
             <Label>Vai trò</Label>
 
@@ -183,24 +381,149 @@ export const UserUpsertModal: React.FC<Props> = ({
                   : "Manager"}
               </div>
             ) : (
-              <Select
-                value={String(roleId)}
-                onValueChange={(v) => setRoleId(Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn vai trò" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((r) => (
-                    <SelectItem key={r.value} value={String(r.value)}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select
+                  value={String(roleId)}
+                  onValueChange={(v) => {
+                    setRoleId(Number(v));
+                    setErrors((prev) => ({
+                      ...prev,
+                      roleId: undefined,
+                      assignmentType: undefined,
+                      workplaceId: undefined,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn vai trò" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((r) => (
+                      <SelectItem key={r.value} value={String(r.value)}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {errors.roleId && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.roleId}
+                  </p>
+                )}
+              </>
             )}
           </div>
-          {/* Edit-only: status */}
+
+          {!isEdit && (
+            <>
+              {isSupplyCoordinator && (
+                <div>
+                  <Label>Loại nơi làm việc</Label>
+                  <Select
+                    value={effectiveAssignmentType}
+                    onValueChange={(v) => {
+                      setAssignmentType(v as WorkAssignmentType);
+                      setErrors((prev) => ({
+                        ...prev,
+                        assignmentType: undefined,
+                        workplaceId: undefined,
+                      }));
+                    }}
+                    disabled={loadingFranchises}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn loại nơi làm việc" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FRANCHISE">Franchise</SelectItem>
+                      <SelectItem value="CENTRAL_KITCHEN">
+                        Central Kitchen
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.assignmentType && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.assignmentType}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {isStoreStaff && (
+                <div>
+                  <Label>Loại nơi làm việc</Label>
+                  <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm font-medium">
+                    Franchise
+                  </div>
+                </div>
+              )}
+
+              {isKitchenStaff && (
+                <div>
+                  <Label>Loại nơi làm việc</Label>
+                  <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm font-medium">
+                    Central Kitchen
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>
+                  {effectiveAssignmentType === "CENTRAL_KITCHEN"
+                    ? "Chọn bếp"
+                    : "Chọn cửa hàng"}
+                </Label>
+                <Select
+                  value={workplaceId ? String(workplaceId) : ""}
+                  onValueChange={(v) => {
+                    setWorkplaceId(Number(v));
+                    setErrors((prev) => ({ ...prev, workplaceId: undefined }));
+                  }}
+                  disabled={
+                    loadingFranchises ||
+                    !effectiveAssignmentType ||
+                    workplaceOptions.length === 0
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        loadingFranchises
+                          ? "Đang tải dữ liệu..."
+                          : !effectiveAssignmentType
+                            ? "Chọn loại nơi làm việc trước"
+                            : effectiveAssignmentType === "CENTRAL_KITCHEN"
+                              ? "Chọn bếp trung tâm"
+                              : "Chọn cửa hàng"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workplaceOptions.map((item) => (
+                      <SelectItem
+                        key={item.franchiseId}
+                        value={String(item.franchiseId)}
+                      >
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.workplaceId && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.workplaceId}
+                  </p>
+                )}
+                {selectedWorkplace && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {selectedWorkplace.address} • {selectedWorkplace.location}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
           {isEdit && (
             <div>
               <Label>Trạng thái</Label>
@@ -230,7 +553,7 @@ export const UserUpsertModal: React.FC<Props> = ({
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={!canSubmit}
+              disabled={loadingFranchises}
             >
               {selectedUser ? "Cập nhật" : "Thêm mới"}
             </Button>
