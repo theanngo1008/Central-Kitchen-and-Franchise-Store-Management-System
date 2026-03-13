@@ -15,6 +15,9 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   roleId: number;
+
+  assignmentType?: WorkAssignmentType;
+  workplaceId?: number | null;
 }
 
 export interface UpdateUserPayload {

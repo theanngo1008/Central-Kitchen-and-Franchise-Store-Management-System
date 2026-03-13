@@ -7,11 +7,13 @@ import { UsersToolbar, UsersTable, UserUpsertModal } from "./components";
 import UserFranchiseAssignModal from "./components/UserFranchiseAssignModal";
 
 import { adminUsersApi } from "@/api/admin/users.api";
+import { adminUserFranchisesApi } from "@/api/admin/userFranchises.api";
+import type { WorkAssignmentType } from "@/types/admin/franchise.types";
 import type {
   AdminUser,
-  CreateUserPayload,
   UpdateUserPayload,
 } from "@/types/admin/user.types";
+import type { CreateUserFormPayload } from "./components/UserUpsertModal";
 
 const ROLE_LABEL: Record<number, string> = {
   1: "Admin",
@@ -56,18 +58,18 @@ const UserManagement: React.FC = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-  const term = searchTerm.trim().toLowerCase();
-  if (!term) return users;
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return users;
 
-  return users.filter((u) => {
-    const roleText = (u.roleName ?? ROLE_LABEL[u.roleId] ?? "").toLowerCase();
-    return (
-      u.username.toLowerCase().includes(term) ||
-      u.email.toLowerCase().includes(term) ||
-      roleText.includes(term)
-    );
-  });
-}, [users, searchTerm]);
+    return users.filter((u) => {
+      const roleText = (u.roleName ?? ROLE_LABEL[u.roleId] ?? "").toLowerCase();
+      return (
+        u.username.toLowerCase().includes(term) ||
+        u.email.toLowerCase().includes(term) ||
+        roleText.includes(term)
+      );
+    });
+  }, [users, searchTerm]);
 
   const stats = useMemo(() => {
     const total = users.length;
@@ -83,25 +85,56 @@ const UserManagement: React.FC = () => {
     setSelectedUser(null);
     setIsDialogOpen(true);
   };
+
   const handleOpenAssign = (user: AdminUser) => {
     setAssignUser(user);
     setIsAssignOpen(true);
   };
+
   const handleOpenEdit = (user: AdminUser) => {
     setSelectedUser(user);
     setIsDialogOpen(true);
   };
 
-  const handleCreate = async (payload: CreateUserPayload) => {
+  const handleCreate = async (payload: CreateUserFormPayload) => {
     try {
-      await adminUsersApi.create(payload);
-      toast.success("Đã thêm người dùng mới");
+      const createdUser = await adminUsersApi.create({
+        username: payload.username,
+        email: payload.email,
+        password: payload.password,
+        roleId: payload.roleId,
+      });
+
+      if (payload.assignmentType && payload.workplaceId) {
+        const assignmentType: WorkAssignmentType = payload.assignmentType;
+
+        await adminUserFranchisesApi.assign({
+          userId: createdUser.userId,
+          assignmentType,
+          franchiseId:
+            assignmentType === "FRANCHISE" ? payload.workplaceId : null,
+          centralKitchenId:
+            assignmentType === "CENTRAL_KITCHEN" ? payload.workplaceId : null,
+        });
+
+        toast.success("Đã thêm người dùng và gán nơi làm việc");
+      } else {
+        toast.success("Đã thêm người dùng mới");
+      }
+
       setIsDialogOpen(false);
       setSelectedUser(null);
       await loadUsers();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Tạo người dùng thất bại");
+
+      const data = e?.response?.data;
+      const message =
+        typeof data?.message === "string"
+          ? data.message
+          : "Tạo người dùng thất bại";
+
+      toast.error(message);
     }
   };
 
@@ -150,7 +183,6 @@ const UserManagement: React.FC = () => {
         }}
       />
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-2xl font-bold">{stats.total}</p>
@@ -172,7 +204,6 @@ const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Toolbar */}
       <UsersToolbar
         searchTerm={searchTerm}
         onSearchTermChange={setSearchTerm}
@@ -180,7 +211,6 @@ const UserManagement: React.FC = () => {
         loading={loading}
       />
 
-      {/* Table */}
       <UsersTable
         users={filteredUsers}
         loading={loading}
@@ -190,7 +220,6 @@ const UserManagement: React.FC = () => {
         onAssignFranchises={handleOpenAssign}
       />
 
-      {/* Modal */}
       <UserUpsertModal
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
@@ -198,6 +227,7 @@ const UserManagement: React.FC = () => {
         onCreate={handleCreate}
         onUpdate={handleUpdate}
       />
+
       <UserFranchiseAssignModal
         open={isAssignOpen}
         onOpenChange={(v) => {
