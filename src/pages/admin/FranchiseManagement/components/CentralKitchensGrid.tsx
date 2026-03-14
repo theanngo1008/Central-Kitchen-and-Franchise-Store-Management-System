@@ -1,9 +1,9 @@
 import React from "react";
-import { Factory, Store } from "lucide-react";
-import type { CentralKitchenSummaryItem } from "@/types/admin/franchise.types";
+import { Factory, MapPin, CheckCircle2, XCircle, Store } from "lucide-react";
+import type { AdminCentralKitchen } from "@/types/admin/centralKitchen.types";
 
 type Props = {
-  items: CentralKitchenSummaryItem[];
+  items: AdminCentralKitchen[];
   loading?: boolean;
 };
 
@@ -19,8 +19,7 @@ export const CentralKitchensGrid: React.FC<Props> = ({ items, loading }) => {
   if (!items.length) {
     return (
       <div className="rounded-xl border bg-card p-8 text-sm text-muted-foreground">
-        Chưa có dữ liệu bếp trung tâm từ API. Hiện tab này chỉ hiển thị dữ liệu
-        tổng hợp từ danh sách cửa hàng.
+        Chưa có dữ liệu bếp trung tâm từ API.
       </div>
     );
   }
@@ -38,11 +37,34 @@ export const CentralKitchensGrid: React.FC<Props> = ({ items, loading }) => {
                 <Factory className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="font-semibold">{kitchen.centralKitchenName}</p>
+                <p className="font-semibold">{kitchen.name}</p>
                 <p className="text-xs text-muted-foreground">
                   ID bếp: {kitchen.centralKitchenId}
                 </p>
               </div>
+            </div>
+
+            {kitchen.status === "ACTIVE" ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
+                <CheckCircle2 size={12} />
+                ACTIVE
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                <XCircle size={12} />
+                INACTIVE
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="text-muted-foreground">
+              {kitchen.address}
+            </div>
+
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin size={14} />
+              <span>{kitchen.location}</span>
             </div>
           </div>
 
@@ -51,7 +73,7 @@ export const CentralKitchensGrid: React.FC<Props> = ({ items, loading }) => {
               <Store size={16} />
               <span>Số cửa hàng trực thuộc</span>
             </div>
-            <span className="font-semibold">{kitchen.storesCount}</span>
+            <span className="font-semibold">{kitchen.franchiseCount ?? 0}</span>
           </div>
         </div>
       ))}

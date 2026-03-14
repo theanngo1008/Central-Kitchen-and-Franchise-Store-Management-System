@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { AdminUser } from "@/types/admin/user.types";
 import type { AdminFranchise } from "@/types/admin/franchise.types";
+import type { AdminCentralKitchen } from "@/types/admin/centralKitchen.types";
 import { useUserFranchises } from "@/hooks/admin/useUserFranchises";
 
 type Props = {
@@ -21,12 +22,16 @@ type Props = {
   user: AdminUser | null;
 };
 
+type WorkplaceItem =
+  | (AdminFranchise & { workplaceType: "FRANCHISE" })
+  | (AdminCentralKitchen & { workplaceType: "CENTRAL_KITCHEN" });
+
 const isGlobalRole = (roleName?: string) => {
   const normalized = (roleName || "").toLowerCase();
   return normalized === "admin" || normalized === "manager";
 };
 
-const typeBadge = (type: AdminFranchise["type"]) => {
+const typeBadge = (type: "STORE" | "CENTRAL_KITCHEN") => {
   if (type === "STORE") {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-info/10 text-info">
@@ -54,11 +59,17 @@ export const UserFranchiseAssignModal: React.FC<Props> = ({
   const {
     franchises,
     filteredFranchises,
+    centralKitchens,
+    filteredCentralKitchens,
     selectedFranchiseId,
     setSelectedFranchiseId,
     initialFranchiseId,
+    isKitchenBasedRole,
+    isStoreBasedRole,
     getFranchiseId,
+    getCentralKitchenId,
     isAllowedFranchise,
+    isAllowedCentralKitchen,
     loading,
     submitting,
     removing,
@@ -69,36 +80,84 @@ export const UserFranchiseAssignModal: React.FC<Props> = ({
 
   const isGlobal = isGlobalRole(user?.roleName);
 
-  const list = useMemo(() => {
-    const base = filteredFranchises?.length
-      ? filteredFranchises
-      : franchises || [];
-    const term = q.trim().toLowerCase();
-    if (!term) return base;
+  const workplaceList = useMemo<WorkplaceItem[]>(() => {
+    if (isStoreBasedRole) {
+      return (filteredFranchises || []).map((f) => ({
+        ...f,
+        workplaceType: "FRANCHISE" as const,
+      }));
+    }
 
-    return base.filter((f) => {
-      const hay = `${f.name} ${f.address} ${f.location}`.toLowerCase();
+    if (isKitchenBasedRole) {
+      return (filteredCentralKitchens || []).map((k) => ({
+        ...k,
+        workplaceType: "CENTRAL_KITCHEN" as const,
+      }));
+    }
+
+    return [];
+  }, [
+    filteredFranchises,
+    filteredCentralKitchens,
+    isStoreBasedRole,
+    isKitchenBasedRole,
+  ]);
+
+  const list = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return workplaceList;
+
+    return workplaceList.filter((item) => {
+      const hay = `${item.name} ${item.address} ${item.location}`.toLowerCase();
       return hay.includes(term);
     });
-  }, [filteredFranchises, franchises, q]);
+  }, [workplaceList, q]);
 
-  const selectedFranchise = useMemo(() => {
-    const all = franchises || [];
-    return all.find((f) => f.franchiseId === selectedFranchiseId) || null;
-  }, [franchises, selectedFranchiseId]);
+  const selectedWorkplace = useMemo(() => {
+    if (isStoreBasedRole) {
+      return (
+        (franchises || []).find((f) => f.franchiseId === selectedFranchiseId) ||
+        null
+      );
+    }
+
+    if (isKitchenBasedRole) {
+      return (
+        (centralKitchens || []).find(
+          (k) => k.centralKitchenId === selectedFranchiseId,
+        ) || null
+      );
+    }
+
+    return null;
+  }, [
+    franchises,
+    centralKitchens,
+    selectedFranchiseId,
+    isStoreBasedRole,
+    isKitchenBasedRole,
+  ]);
 
   const currentAssignedLabel = useMemo(() => {
     if (isGlobal) return "Không áp dụng cho role global";
     if (!currentAssignment) return "Chưa có nơi làm việc được gán";
 
-    const id =
-      currentAssignment.assignmentType === "CENTRAL_KITCHEN"
-        ? currentAssignment.centralKitchenId
-        : currentAssignment.franchiseId;
+    if (currentAssignment.assignmentType === "CENTRAL_KITCHEN") {
+      const matched = (centralKitchens || []).find(
+        (k) => k.centralKitchenId === currentAssignment.centralKitchenId,
+      );
+      return matched
+        ? `${matched.name} (CENTRAL_KITCHEN)`
+        : `ID: ${currentAssignment.centralKitchenId ?? "-"}`;
+    }
 
-    const matched = (franchises || []).find((f) => f.franchiseId === id);
-    return matched ? `${matched.name} (${matched.type})` : `ID: ${id ?? "-"}`;
-  }, [currentAssignment, franchises, isGlobal]);
+    const matched = (franchises || []).find(
+      (f) => f.franchiseId === currentAssignment.franchiseId,
+    );
+    return matched
+      ? `${matched.name} (STORE)`
+      : `ID: ${currentAssignment.franchiseId ?? "-"}`;
+  }, [currentAssignment, franchises, centralKitchens, isGlobal]);
 
   const close = () => onOpenChange(false);
 
@@ -242,7 +301,7 @@ export const UserFranchiseAssignModal: React.FC<Props> = ({
                   <p className="text-xs text-muted-foreground">
                     Đang chọn:{" "}
                     <span className="font-medium">
-                      {selectedFranchise ? selectedFranchise.name : "Chưa chọn"}
+                      {selectedWorkplace ? selectedWorkplace.name : "Chưa chọn"}
                     </span>
                   </p>
                 </div>
@@ -269,14 +328,21 @@ export const UserFranchiseAssignModal: React.FC<Props> = ({
                         </tr>
                       </thead>
                       <tbody>
-                        {list.map((f) => {
-                          const fid = getFranchiseId(f);
-                          const checked = selectedFranchiseId === fid;
-                          const allowed = isAllowedFranchise(f);
+                        {list.map((item) => {
+                          const itemId =
+                            item.workplaceType === "CENTRAL_KITCHEN"
+                              ? getCentralKitchenId(item)
+                              : getFranchiseId(item);
+
+                          const checked = selectedFranchiseId === itemId;
+                          const allowed =
+                            item.workplaceType === "CENTRAL_KITCHEN"
+                              ? isAllowedCentralKitchen(item)
+                              : isAllowedFranchise(item);
 
                           return (
                             <tr
-                              key={fid}
+                              key={`${item.workplaceType}-${itemId}`}
                               className={`border-b last:border-0 hover:bg-muted/20 ${
                                 !allowed ? "opacity-60" : ""
                               }`}
@@ -287,22 +353,28 @@ export const UserFranchiseAssignModal: React.FC<Props> = ({
                                   name="user-work-assignment"
                                   checked={checked}
                                   disabled={!allowed}
-                                  onChange={() => setSelectedFranchiseId(fid)}
+                                  onChange={() => setSelectedFranchiseId(itemId)}
                                   className="h-4 w-4"
                                 />
                               </td>
 
                               <td className="p-3">
-                                <p className="font-medium">{f.name}</p>
+                                <p className="font-medium">{item.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {f.address} • {f.location}
+                                  {item.address} • {item.location}
                                 </p>
                               </td>
 
-                              <td className="p-3">{typeBadge(f.type)}</td>
+                              <td className="p-3">
+                                {typeBadge(
+                                  item.workplaceType === "CENTRAL_KITCHEN"
+                                    ? "CENTRAL_KITCHEN"
+                                    : "STORE",
+                                )}
+                              </td>
 
                               <td className="p-3">
-                                {f.status === "ACTIVE" ? (
+                                {item.status === "ACTIVE" ? (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
                                     ACTIVE
                                   </span>
@@ -331,7 +403,11 @@ export const UserFranchiseAssignModal: React.FC<Props> = ({
               className="gap-2 text-destructive"
               onClick={handleRemove}
               disabled={
-                removing || submitting || loading || isGlobal || !currentAssignment
+                removing ||
+                submitting ||
+                loading ||
+                isGlobal ||
+                !currentAssignment
               }
             >
               <Trash2 size={16} />

@@ -5,13 +5,14 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { adminFranchisesApi } from "@/api/admin/franchises.api";
+import { adminCentralKitchensApi } from "@/api/admin/centralKitchens.api";
 import type {
   AdminFranchise,
   CentralKitchenOption,
-  CentralKitchenSummaryItem,
   CreateFranchisePayload,
   UpdateFranchisePayload,
 } from "@/types/admin/franchise.types";
+import type { AdminCentralKitchen } from "@/types/admin/centralKitchen.types";
 import {
   CentralKitchensGrid,
   FranchisesGrid,
@@ -23,6 +24,7 @@ type TabKey = "STORE" | "CENTRAL_KITCHEN";
 
 const FranchiseManagement: React.FC = () => {
   const [items, setItems] = useState<AdminFranchise[]>([]);
+  const [kitchens, setKitchens] = useState<AdminCentralKitchen[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,18 +36,17 @@ const FranchiseManagement: React.FC = () => {
   const load = async () => {
     try {
       setLoading(true);
-      console.time("GET /admin/franchises");
 
-      const data = await adminFranchisesApi.list();
+      const [storeData, kitchenData] = await Promise.all([
+        adminFranchisesApi.list(),
+        adminCentralKitchensApi.list(),
+      ]);
 
-      console.timeEnd("GET /admin/franchises");
-      console.log("franchises result:", data);
-
-      setItems(data || []);
+      setItems(storeData || []);
+      setKitchens(kitchenData || []);
     } catch (e) {
-      console.timeEnd("GET /admin/franchises");
-      console.error("GET /admin/franchises error:", e);
-      toast.error("Không tải được danh sách cửa hàng");
+      console.error(e);
+      toast.error("Không tải được danh sách cửa hàng / bếp");
     } finally {
       setLoading(false);
     }
@@ -56,53 +57,26 @@ const FranchiseManagement: React.FC = () => {
   }, []);
 
   const kitchenOptions = useMemo<CentralKitchenOption[]>(() => {
-    const map = new Map<number, string>();
-
-    items.forEach((item) => {
-      if (item.centralKitchenId > 0 && item.centralKitchenName?.trim()) {
-        map.set(item.centralKitchenId, item.centralKitchenName);
-      }
-    });
-
-    return Array.from(map.entries())
-      .map(([value, label]) => ({ value, label }))
+    return (kitchens || [])
+      .map((item) => ({
+        value: item.centralKitchenId,
+        label: item.name,
+      }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [items]);
-
-  const kitchenSummaries = useMemo<CentralKitchenSummaryItem[]>(() => {
-    const map = new Map<number, CentralKitchenSummaryItem>();
-
-    items.forEach((item) => {
-      if (item.centralKitchenId <= 0) return;
-
-      const current = map.get(item.centralKitchenId);
-
-      if (current) {
-        current.storesCount += 1;
-        return;
-      }
-
-      map.set(item.centralKitchenId, {
-        centralKitchenId: item.centralKitchenId,
-        centralKitchenName:
-          item.centralKitchenName || `Central Kitchen #${item.centralKitchenId}`,
-        storesCount: 1,
-      });
-    });
-
-    return Array.from(map.values()).sort((a, b) =>
-      a.centralKitchenName.localeCompare(b.centralKitchenName),
-    );
-  }, [items]);
+  }, [kitchens]);
 
   const stats = useMemo(() => {
     const stores = items.length;
-    const kitchens = kitchenSummaries.length;
-    const active = items.filter((x) => x.status === "ACTIVE").length;
-    const inactive = items.filter((x) => x.status === "INACTIVE").length;
+    const kitchensCount = kitchens.length;
+    const active =
+      items.filter((x) => x.status === "ACTIVE").length +
+      kitchens.filter((x) => x.status === "ACTIVE").length;
+    const inactive =
+      items.filter((x) => x.status === "INACTIVE").length +
+      kitchens.filter((x) => x.status === "INACTIVE").length;
 
-    return { stores, kitchens, active, inactive };
-  }, [items, kitchenSummaries]);
+    return { stores, kitchens: kitchensCount, active, inactive };
+  }, [items, kitchens]);
 
   const filteredStores = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -119,16 +93,19 @@ const FranchiseManagement: React.FC = () => {
 
   const filteredKitchens = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return kitchenSummaries;
+    if (!term) return kitchens;
 
-    return kitchenSummaries.filter((x) =>
-      x.centralKitchenName.toLowerCase().includes(term),
+    return kitchens.filter(
+      (x) =>
+        x.name.toLowerCase().includes(term) ||
+        x.address.toLowerCase().includes(term) ||
+        x.location.toLowerCase().includes(term),
     );
-  }, [kitchenSummaries, searchTerm]);
+  }, [kitchens, searchTerm]);
 
   const handleOpenCreate = () => {
     if (tab === "CENTRAL_KITCHEN") {
-      toast.info("Tab bếp trung tâm hiện chỉ hiển thị dữ liệu tổng hợp.");
+      toast.info("Tạo / sửa bếp trung tâm sẽ xử lý ở luồng riêng.");
       return;
     }
 
@@ -271,10 +248,7 @@ const FranchiseManagement: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="CENTRAL_KITCHEN">
-          <CentralKitchensGrid
-            items={filteredKitchens}
-            loading={loading}
-          />
+          <CentralKitchensGrid items={filteredKitchens} loading={loading} />
         </TabsContent>
       </Tabs>
 

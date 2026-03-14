@@ -18,10 +18,12 @@ import {
 import { toast } from "sonner";
 
 import { adminFranchisesApi } from "@/api/admin/franchises.api";
+import { adminCentralKitchensApi } from "@/api/admin/centralKitchens.api";
 import type {
   AdminFranchise,
   WorkAssignmentType,
 } from "@/types/admin/franchise.types";
+import type { AdminCentralKitchen } from "@/types/admin/centralKitchen.types";
 import type {
   AdminUser,
   UpdateUserPayload,
@@ -59,7 +61,12 @@ const resolveDefaultAssignmentType = (
   roleId: number,
 ): WorkAssignmentType | "" => {
   if (roleId === ROLE_STORE_STAFF) return "FRANCHISE";
-  if (roleId === ROLE_KITCHEN_STAFF) return "CENTRAL_KITCHEN";
+  if (
+    roleId === ROLE_KITCHEN_STAFF ||
+    roleId === ROLE_SUPPLY_COORDINATOR
+  ) {
+    return "CENTRAL_KITCHEN";
+  }
   return "";
 };
 
@@ -93,7 +100,10 @@ export const UserUpsertModal: React.FC<Props> = ({
   const [status, setStatus] = useState<UserStatus>("ACTIVE");
 
   const [franchises, setFranchises] = useState<AdminFranchise[]>([]);
-  const [loadingFranchises, setLoadingFranchises] = useState(false);
+  const [centralKitchens, setCentralKitchens] = useState<AdminCentralKitchen[]>(
+    [],
+  );
+  const [loadingWorkplaces, setLoadingWorkplaces] = useState(false);
   const [assignmentType, setAssignmentType] = useState<WorkAssignmentType | "">(
     "",
   );
@@ -138,14 +148,18 @@ export const UserUpsertModal: React.FC<Props> = ({
 
     const run = async () => {
       try {
-        setLoadingFranchises(true);
-        const data = await adminFranchisesApi.list();
-        setFranchises(data || []);
+        setLoadingWorkplaces(true);
+        const [storeData, kitchenData] = await Promise.all([
+          adminFranchisesApi.list(),
+          adminCentralKitchensApi.list(),
+        ]);
+        setFranchises(storeData || []);
+        setCentralKitchens(kitchenData || []);
       } catch (e) {
         console.error(e);
-        toast.error("Không tải được danh sách cửa hàng / bếp");
+        toast.error("Không tải được danh sách nơi làm việc");
       } finally {
-        setLoadingFranchises(false);
+        setLoadingWorkplaces(false);
       }
     };
 
@@ -158,9 +172,9 @@ export const UserUpsertModal: React.FC<Props> = ({
 
   const effectiveAssignmentType = useMemo<WorkAssignmentType | "">(() => {
     if (isStoreStaff) return "FRANCHISE";
-    if (isKitchenStaff) return "CENTRAL_KITCHEN";
+    if (isKitchenStaff || isSupplyCoordinator) return "CENTRAL_KITCHEN";
     return assignmentType;
-  }, [isStoreStaff, isKitchenStaff, assignmentType]);
+  }, [isStoreStaff, isKitchenStaff, isSupplyCoordinator, assignmentType]);
 
   const showWorkplaceSection = !isEdit;
 
@@ -169,10 +183,7 @@ export const UserUpsertModal: React.FC<Props> = ({
     [franchises],
   );
 
-  const kitchenOptions = useMemo(
-    () => franchises.filter((f) => f.type === "CENTRAL_KITCHEN"),
-    [franchises],
-  );
+  const kitchenOptions = useMemo(() => centralKitchens, [centralKitchens]);
 
   const workplaceOptions = useMemo(() => {
     if (effectiveAssignmentType === "FRANCHISE") return storeOptions;
@@ -181,15 +192,35 @@ export const UserUpsertModal: React.FC<Props> = ({
   }, [effectiveAssignmentType, storeOptions, kitchenOptions]);
 
   const selectedWorkplace = useMemo(() => {
-    return (
-      workplaceOptions.find((item) => item.franchiseId === workplaceId) || null
-    );
-  }, [workplaceOptions, workplaceId]);
+    if (effectiveAssignmentType === "FRANCHISE") {
+      return (
+        storeOptions.find((item) => item.franchiseId === workplaceId) || null
+      );
+    }
+
+    if (effectiveAssignmentType === "CENTRAL_KITCHEN") {
+      return (
+        kitchenOptions.find((item) => item.centralKitchenId === workplaceId) ||
+        null
+      );
+    }
+
+    return null;
+  }, [effectiveAssignmentType, storeOptions, kitchenOptions, workplaceId]);
 
   useEffect(() => {
     if (!open || isEdit) return;
     setWorkplaceId(null);
   }, [roleId, assignmentType, open, isEdit]);
+
+  useEffect(() => {
+    if (!open || isEdit) return;
+    if (effectiveAssignmentType !== "CENTRAL_KITCHEN") return;
+    if (workplaceId) return;
+    if (kitchenOptions.length !== 1) return;
+
+    setWorkplaceId(kitchenOptions[0].centralKitchenId);
+  }, [open, isEdit, effectiveAssignmentType, workplaceId, kitchenOptions]);
 
   const canSubmit = useMemo(() => {
     if (isEdit) {
@@ -417,53 +448,13 @@ export const UserUpsertModal: React.FC<Props> = ({
 
           {!isEdit && (
             <>
-              {isSupplyCoordinator && (
-                <div>
-                  <Label>Loại nơi làm việc</Label>
-                  <Select
-                    value={effectiveAssignmentType}
-                    onValueChange={(v) => {
-                      setAssignmentType(v as WorkAssignmentType);
-                      setErrors((prev) => ({
-                        ...prev,
-                        assignmentType: undefined,
-                        workplaceId: undefined,
-                      }));
-                    }}
-                    disabled={loadingFranchises}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn loại nơi làm việc" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FRANCHISE">Franchise</SelectItem>
-                      <SelectItem value="CENTRAL_KITCHEN">
-                        Central Kitchen
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.assignmentType && (
-                    <p className="text-xs text-destructive mt-1">
-                      {errors.assignmentType}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {isStoreStaff && (
+              {(isSupplyCoordinator || isKitchenStaff || isStoreStaff) && (
                 <div>
                   <Label>Loại nơi làm việc</Label>
                   <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm font-medium">
-                    Franchise
-                  </div>
-                </div>
-              )}
-
-              {isKitchenStaff && (
-                <div>
-                  <Label>Loại nơi làm việc</Label>
-                  <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm font-medium">
-                    Central Kitchen
+                    {effectiveAssignmentType === "CENTRAL_KITCHEN"
+                      ? "Central Kitchen"
+                      : "Franchise"}
                   </div>
                 </div>
               )}
@@ -481,7 +472,7 @@ export const UserUpsertModal: React.FC<Props> = ({
                     setErrors((prev) => ({ ...prev, workplaceId: undefined }));
                   }}
                   disabled={
-                    loadingFranchises ||
+                    loadingWorkplaces ||
                     !effectiveAssignmentType ||
                     workplaceOptions.length === 0
                   }
@@ -489,7 +480,7 @@ export const UserUpsertModal: React.FC<Props> = ({
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        loadingFranchises
+                        loadingWorkplaces
                           ? "Đang tải dữ liệu..."
                           : !effectiveAssignmentType
                             ? "Chọn loại nơi làm việc trước"
@@ -500,14 +491,25 @@ export const UserUpsertModal: React.FC<Props> = ({
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {workplaceOptions.map((item) => (
-                      <SelectItem
-                        key={item.franchiseId}
-                        value={String(item.franchiseId)}
-                      >
-                        {item.name}
-                      </SelectItem>
-                    ))}
+                    {effectiveAssignmentType === "FRANCHISE" &&
+                      storeOptions.map((item) => (
+                        <SelectItem
+                          key={item.franchiseId}
+                          value={String(item.franchiseId)}
+                        >
+                          {item.name}
+                        </SelectItem>
+                      ))}
+
+                    {effectiveAssignmentType === "CENTRAL_KITCHEN" &&
+                      kitchenOptions.map((item) => (
+                        <SelectItem
+                          key={item.centralKitchenId}
+                          value={String(item.centralKitchenId)}
+                        >
+                          {item.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 {errors.workplaceId && (
@@ -553,7 +555,7 @@ export const UserUpsertModal: React.FC<Props> = ({
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={loadingFranchises}
+              disabled={loadingWorkplaces || !canSubmit}
             >
               {selectedUser ? "Cập nhật" : "Thêm mới"}
             </Button>

@@ -10,15 +10,8 @@ import { adminUserFranchisesApi } from "@/api/admin/userFranchises.api";
 import type {
   AdminFranchise,
   AssignedUserItem,
-  WorkAssignmentType,
 } from "@/types/admin/franchise.types";
 import { AddUserToFranchiseModal } from "@/pages/admin/FranchiseManagement/components/AddUserToFranchiseModal";
-
-const mapFranchiseTypeToAssignmentType = (
-  type: AdminFranchise["type"],
-): WorkAssignmentType => {
-  return type === "CENTRAL_KITCHEN" ? "CENTRAL_KITCHEN" : "FRANCHISE";
-};
 
 const FranchiseDetail: React.FC = () => {
   const nav = useNavigate();
@@ -41,11 +34,15 @@ const FranchiseDetail: React.FC = () => {
       setFranchise(found);
 
       if (!found) {
-        toast.error("Không tìm thấy cửa hàng / bếp");
+        toast.error("Không tìm thấy cửa hàng");
+        return null;
       }
+
+      return found;
     } catch (e) {
       console.error(e);
-      toast.error("Không tải được chi tiết cửa hàng / bếp");
+      toast.error("Không tải được chi tiết cửa hàng");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -58,22 +55,15 @@ const FranchiseDetail: React.FC = () => {
     try {
       setUsersLoading(true);
 
-      const assignmentType = mapFranchiseTypeToAssignmentType(target.type);
-
       const data = await adminUserFranchisesApi.listUsersByAssignment({
-        assignmentType,
-        franchiseId:
-          assignmentType === "FRANCHISE" ? target.franchiseId : undefined,
-        centralKitchenId:
-          assignmentType === "CENTRAL_KITCHEN"
-            ? target.franchiseId
-            : undefined,
+        assignmentType: "FRANCHISE",
+        franchiseId: target.franchiseId,
       });
 
       setUsers(data);
     } catch (e) {
       console.error(e);
-      toast.error("Không tải được danh sách user của cửa hàng / bếp");
+      toast.error("Không tải được danh sách user của cửa hàng");
     } finally {
       setUsersLoading(false);
     }
@@ -83,53 +73,23 @@ const FranchiseDetail: React.FC = () => {
     if (!Number.isFinite(id)) return;
 
     const run = async () => {
-      try {
-        setLoading(true);
-        const list = await adminFranchisesApi.list();
-        const found = list.find((x) => x.franchiseId === id) || null;
-        setFranchise(found);
-
-        if (!found) {
-          toast.error("Không tìm thấy cửa hàng / bếp");
-          return;
-        }
-
-        const assignmentType = mapFranchiseTypeToAssignmentType(found.type);
-
-        setUsersLoading(true);
-        const assignedUsers =
-          await adminUserFranchisesApi.listUsersByAssignment({
-            assignmentType,
-            franchiseId:
-              assignmentType === "FRANCHISE" ? found.franchiseId : undefined,
-            centralKitchenId:
-              assignmentType === "CENTRAL_KITCHEN"
-                ? found.franchiseId
-                : undefined,
-          });
-
-        setUsers(assignedUsers);
-      } catch (e) {
-        console.error(e);
-        toast.error("Không tải được dữ liệu chi tiết");
-      } finally {
-        setLoading(false);
-        setUsersLoading(false);
-      }
+      const found = await loadFranchise();
+      if (!found) return;
+      await loadUsers(found);
     };
 
     run();
   }, [id]);
 
   const subtitle = useMemo(() => {
-    if (!franchise) return "Chi tiết cửa hàng / bếp";
-    return `${franchise.type === "STORE" ? "Cửa hàng" : "Bếp trung tâm"} • ${franchise.status}`;
+    if (!franchise) return "Chi tiết cửa hàng";
+    return `Cửa hàng • ${franchise.status}`;
   }, [franchise]);
 
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title={franchise?.name || "Chi tiết cửa hàng / bếp"}
+        title={franchise?.name || "Chi tiết cửa hàng"}
         subtitle={subtitle}
         action={{ label: "Quay lại", onClick: () => nav("/admin/locations") }}
       />
@@ -152,8 +112,15 @@ const FranchiseDetail: React.FC = () => {
               {franchise.address}
             </div>
             <div>
-              <span className="text-muted-foreground">Loại:</span>{" "}
-              {franchise.type}
+              <span className="text-muted-foreground">Loại:</span> STORE
+            </div>
+            <div>
+              <span className="text-muted-foreground">Bếp phụ trách:</span>{" "}
+              {franchise.centralKitchenName || "-"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Central Kitchen ID:</span>{" "}
+              {franchise.centralKitchenId}
             </div>
           </div>
         ) : null}
@@ -176,7 +143,7 @@ const FranchiseDetail: React.FC = () => {
         <TabsContent value="USERS">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm text-muted-foreground">
-              Danh sách user thuộc cửa hàng / bếp này
+              Danh sách user thuộc cửa hàng này
             </div>
             <div className="flex gap-2">
               <Button
@@ -219,9 +186,7 @@ const FranchiseDetail: React.FC = () => {
                         {u.email} • {u.roleName}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {u.assignmentType === "CENTRAL_KITCHEN"
-                          ? `Bếp ID: ${u.centralKitchenId ?? "-"}`
-                          : `Cửa hàng ID: ${u.franchiseId ?? "-"}`}
+                        Cửa hàng ID: {u.franchiseId ?? "-"}
                       </div>
                     </div>
 
@@ -232,7 +197,7 @@ const FranchiseDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           await adminUserFranchisesApi.remove(u.userId);
-                          toast.success("Đã gỡ user khỏi cửa hàng / bếp");
+                          toast.success("Đã gỡ user khỏi cửa hàng");
                           await loadUsers();
                         } catch (e) {
                           console.error(e);

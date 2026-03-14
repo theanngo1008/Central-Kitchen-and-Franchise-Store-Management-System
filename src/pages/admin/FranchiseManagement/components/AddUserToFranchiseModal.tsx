@@ -13,10 +13,7 @@ import { Button } from "@/components/ui/button";
 import { adminUsersApi } from "@/api/admin/users.api";
 import { adminUserFranchisesApi } from "@/api/admin/userFranchises.api";
 import type { AdminUser } from "@/types/admin/user.types";
-import type {
-  AdminFranchise,
-  WorkAssignmentType,
-} from "@/types/admin/franchise.types";
+import type { AdminFranchise } from "@/types/admin/franchise.types";
 
 type Props = {
   open: boolean;
@@ -27,29 +24,12 @@ type Props = {
 
 const normalize = (s?: string) => (s || "").trim().toLowerCase();
 
-const mapFranchiseTypeToAssignmentType = (
-  type: AdminFranchise["type"],
-): WorkAssignmentType => {
-  return type === "CENTRAL_KITCHEN" ? "CENTRAL_KITCHEN" : "FRANCHISE";
-};
-
-const isUserAllowedForFranchise = (
-  user: AdminUser,
-  franchise: AdminFranchise,
-) => {
+const isUserAllowedForStore = (user: AdminUser) => {
   const role = normalize(user.roleName);
 
   if (role === "admin" || role === "manager") return false;
 
-  if (franchise.type === "STORE") {
-    return role === "storestaff" || role === "supplycoordinator";
-  }
-
-  if (franchise.type === "CENTRAL_KITCHEN") {
-    return role === "kitchenstaff" || role === "supplycoordinator";
-  }
-
-  return false;
+  return role === "storestaff";
 };
 
 export const AddUserToFranchiseModal: React.FC<Props> = ({
@@ -75,9 +55,7 @@ export const AddUserToFranchiseModal: React.FC<Props> = ({
         setLoading(true);
         const data = await adminUsersApi.list();
 
-        const allowed = data.filter((u) =>
-          isUserAllowedForFranchise(u, franchise),
-        );
+        const allowed = data.filter((u) => isUserAllowedForStore(u));
 
         const freeUsers: AdminUser[] = [];
         const chunkSize = 8;
@@ -113,11 +91,11 @@ export const AddUserToFranchiseModal: React.FC<Props> = ({
     };
 
     run();
-  }, [open, franchise]);
+  }, [open]);
 
   const filtered = useMemo(() => {
     const term = normalize(q);
-    const base = users.filter((u) => isUserAllowedForFranchise(u, franchise));
+    const base = users.filter((u) => isUserAllowedForStore(u));
 
     if (!term) return base;
 
@@ -127,7 +105,7 @@ export const AddUserToFranchiseModal: React.FC<Props> = ({
         normalize(u.email).includes(term) ||
         normalize(u.roleName).includes(term),
     );
-  }, [users, q, franchise]);
+  }, [users, q]);
 
   const handleSubmit = async () => {
     if (!selected) {
@@ -137,25 +115,26 @@ export const AddUserToFranchiseModal: React.FC<Props> = ({
 
     const role = normalize(selected.roleName);
     if (role === "admin" || role === "manager") {
-      toast.error("Role này không thể gán vào cửa hàng / bếp");
+      toast.error("Role này không thể gán vào cửa hàng");
+      return;
+    }
+
+    if (role !== "storestaff") {
+      toast.error("Chỉ StoreStaff mới có thể gán vào cửa hàng");
       return;
     }
 
     try {
       setSubmitting(true);
 
-      const assignmentType = mapFranchiseTypeToAssignmentType(franchise.type);
-
       await adminUserFranchisesApi.assign({
         userId: selected.userId,
-        assignmentType,
-        franchiseId:
-          assignmentType === "FRANCHISE" ? franchise.franchiseId : null,
-        centralKitchenId:
-          assignmentType === "CENTRAL_KITCHEN" ? franchise.franchiseId : null,
+        assignmentType: "FRANCHISE",
+        franchiseId: franchise.franchiseId,
+        centralKitchenId: null,
       });
 
-      toast.success("Đã gán user vào cửa hàng / bếp");
+      toast.success("Đã gán user vào cửa hàng");
       onOpenChange(false);
       await onAssigned?.();
     } catch (e: any) {
@@ -176,7 +155,7 @@ export const AddUserToFranchiseModal: React.FC<Props> = ({
 
       if (isAlreadyAssigned) {
         toast.error(
-          "User đã thuộc cửa hàng / bếp khác (1 user chỉ thuộc 1 nơi).",
+          "User đã thuộc nơi làm việc khác (1 user chỉ thuộc 1 nơi).",
         );
 
         if (selected) {
@@ -196,15 +175,12 @@ export const AddUserToFranchiseModal: React.FC<Props> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            Add user vào {franchise.type === "STORE" ? "Cửa hàng" : "Bếp"}:{" "}
-            {franchise.name}
-          </DialogTitle>
+          <DialogTitle>Add user vào Cửa hàng: {franchise.name}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Chỉ hiển thị user có thể được gán vào{" "}
-          {franchise.type === "STORE" ? "cửa hàng" : "bếp"} này.
+          Chỉ hiển thị user StoreStaff chưa được gán nơi làm việc.
         </p>
+
         <div className="space-y-3">
           <Input
             placeholder="Tìm theo username / email..."

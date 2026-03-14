@@ -1,4 +1,4 @@
-export type FranchiseType = "STORE" | "CENTRAL_KITCHEN";
+export type FranchiseType = "STORE";
 export type FranchiseStatus = "ACTIVE" | "INACTIVE";
 
 export interface AdminFranchise {
