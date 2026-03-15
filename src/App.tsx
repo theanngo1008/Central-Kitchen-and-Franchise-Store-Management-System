@@ -11,6 +11,7 @@ import NotFound from "@/pages/NotFound";
 // Store Pages
 import CreateOrderPage from "@/pages/store/CreateOrder";
 import StoreDashboard from "@/pages/store/StoreDashboard";
+import StoreOrderDetail from "@/pages/store/StoreOrderDetail";
 import OrderList from "@/pages/store/OrderList";
 import ReceiveGoods from "@/pages/store/ReceiveGoods";
 import StoreInventory from "@/pages/store/StoreInventory";
@@ -83,7 +84,10 @@ const App = () => (
                 path="/stores/:storeId/inventory"
                 element={<StoreInventory />}
               />
-
+              <Route
+                path="/stores/:storeId/orders/:orderId"
+                element={<StoreOrderDetail />}
+              />
               {/* Kitchen Routes */}
               <Route path="/kitchen" element={<KitchenDashboard />} />
               <Route path="/kitchen/orders" element={<IncomingOrders />} />

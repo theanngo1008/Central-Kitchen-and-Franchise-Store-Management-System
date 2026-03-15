@@ -49,7 +49,6 @@ const OrderList: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
 
   const [cancelingOrder, setCancelingOrder] = useState<StoreOrder | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -158,7 +157,9 @@ const OrderList: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setSelectedOrder(order)}
+            onClick={() =>
+              navigate(`/stores/${storeId ?? franchiseId}/orders/${order.storeOrderId}`)
+            }
           >
             <Eye size={16} className="mr-2" />
             Xem
@@ -313,104 +314,6 @@ const OrderList: React.FC = () => {
       <DataTable columns={columns} data={tableData} />
 
       <Dialog
-        open={!!selectedOrder}
-        onOpenChange={() => setSelectedOrder(null)}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Chi tiết đơn hàng #{selectedOrder?.storeOrderId}
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Mã đơn</span>
-                    <span className="font-medium">
-                      #{selectedOrder.storeOrderId}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Ngày đặt</span>
-                    <span>{formatDateTime(selectedOrder.orderDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Ngày tạo</span>
-                    <span>{formatDateTime(selectedOrder.createdAt)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Locked at</span>
-                    <span>{formatDateTime(selectedOrder.lockedAt)}</span>
-                  </div>
-                </div>
-
-                <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Trạng thái</span>
-                    <StatusBadge status={selectedOrder.status} />
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Submitted at</span>
-                    <span>{formatDateTime(selectedOrder.submittedAt)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cancelled at</span>
-                    <span>{formatDateTime(selectedOrder.cancelledAt)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Lý do hủy</span>
-                    <span>{selectedOrder.cancelReason || "-"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Danh sách sản phẩm</h3>
-                <div className="border rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/40 text-sm font-medium">
-                    <div className="col-span-6">Sản phẩm</div>
-                    <div className="col-span-3 text-center">Số lượng</div>
-                    <div className="col-span-3 text-center">Đơn vị</div>
-                  </div>
-
-                  <div className="divide-y">
-                    {selectedOrder.items.map((item) => (
-                      <div
-                        key={item.productId}
-                        className="grid grid-cols-12 gap-2 px-4 py-3 text-sm"
-                      >
-                        <div className="col-span-6 font-medium">
-                          {item.productName}
-                        </div>
-                        <div className="col-span-3 text-center">
-                          {item.quantity}
-                        </div>
-                        <div className="col-span-3 text-center">
-                          {item.unit}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedOrder(null)}
-                >
-                  Đóng
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
         open={!!cancelingOrder}
         onOpenChange={(open) => {
           if (!open) {
@@ -463,6 +366,10 @@ const OrderList: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {isLoading ? (
+        <div className="mt-4 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
+      ) : null}
     </div>
   );
 };
