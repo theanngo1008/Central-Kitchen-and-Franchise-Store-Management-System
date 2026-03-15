@@ -48,20 +48,21 @@ const CreateOrderPage: React.FC = () => {
   const [itemsMap, setItemsMap] = useState<Record<number, OrderDraftItem>>({});
 
   const {
-    data: catalog,
+    data: catalogResponse,
     isLoading: loadingCatalog,
     refetch: refetchCatalog,
   } = useStoreCatalog(franchiseId);
+
+  const catalog = catalogResponse?.data?.items ?? [];
 
   const createOrder = useCreateStoreOrder(franchiseId);
   const submitOrder = useSubmitStoreOrder(franchiseId);
 
   const filteredCatalog = useMemo(() => {
-    const list = catalog ?? [];
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return list;
+    if (!term) return catalog;
 
-    return list.filter((p) => {
+    return catalog.filter((p) => {
       return (
         p.productName.toLowerCase().includes(term) ||
         p.sku.toLowerCase().includes(term) ||
@@ -74,9 +75,8 @@ const CreateOrderPage: React.FC = () => {
   const orderItems = useMemo(() => Object.values(itemsMap), [itemsMap]);
 
   const stats = useMemo(() => {
-    const totalCatalog = catalog?.length ?? 0;
-    const activeCatalog = (catalog ?? []).filter((x) => x.status === "ACTIVE")
-      .length;
+    const totalCatalog = catalog.length;
+    const activeCatalog = catalog.filter((x) => x.status === "ACTIVE").length;
     const chosen = orderItems.length;
     const totalQty = orderItems.reduce((sum, it) => sum + it.quantity, 0);
     return { totalCatalog, activeCatalog, chosen, totalQty };
@@ -145,8 +145,14 @@ const CreateOrderPage: React.FC = () => {
     try {
       const payload = buildPayload();
       const created = await createOrder.mutateAsync(payload);
-      toast.success(`Đã tạo đơn #${created.storeOrderId} (DRAFT)`);
-      // reset draft after create
+      const storeOrderId = created?.data?.storeOrderId;
+
+      if (!storeOrderId) {
+        toast.error("Không lấy được mã đơn hàng sau khi tạo");
+        return;
+      }
+
+      toast.success(`Đã tạo đơn #${storeOrderId} (DRAFT)`);
       setItemsMap({});
       setNote("");
     } catch (e) {
@@ -160,8 +166,15 @@ const CreateOrderPage: React.FC = () => {
     try {
       const payload = buildPayload();
       const created = await createOrder.mutateAsync(payload);
-      await submitOrder.mutateAsync(created.storeOrderId);
-      toast.success(`Đã gửi đơn #${created.storeOrderId}`);
+      const storeOrderId = created?.data?.storeOrderId;
+
+      if (!storeOrderId) {
+        toast.error("Không lấy được mã đơn hàng sau khi tạo");
+        return;
+      }
+
+      await submitOrder.mutateAsync(storeOrderId);
+      toast.success(`Đã gửi đơn #${storeOrderId}`);
       setItemsMap({});
       setNote("");
     } catch (e) {
@@ -196,7 +209,9 @@ const CreateOrderPage: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-2xl font-bold">{stats.totalCatalog}</p>
-          <p className="text-sm text-muted-foreground">Sản phẩm trong catalog</p>
+          <p className="text-sm text-muted-foreground">
+            Sản phẩm trong catalog
+          </p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <p className="text-2xl font-bold text-success">

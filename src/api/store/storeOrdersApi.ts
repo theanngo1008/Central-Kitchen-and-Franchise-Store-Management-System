@@ -1,4 +1,5 @@
 import adminApi from '../api';
+import type { ApiResponse } from '@/types/common/apiResponse.types';
 import type {
   StoreOrder,
   CreateStoreOrderPayload,
@@ -9,19 +10,19 @@ import type {
 
 export const storeOrdersApi = {
   list: async (franchiseId: number, params?: StoreOrderQuery) =>
-    (await adminApi.get<StoreOrder[]>(
-      `/api/franchises/${franchiseId}/store-orders`,
+    (await adminApi.get<ApiResponse<StoreOrder[]>>(
+      `/franchises/${franchiseId}/store-orders`,
       { params }
     )).data,
 
   detail: async (franchiseId: number, orderId: number) =>
-    (await adminApi.get<StoreOrder>(
-      `/api/franchises/${franchiseId}/store-orders/${orderId}`
+    (await adminApi.get<ApiResponse<StoreOrder>>(
+      `/franchises/${franchiseId}/store-orders/${orderId}`
     )).data,
 
   create: async (franchiseId: number, payload: CreateStoreOrderPayload) =>
-    (await adminApi.post<StoreOrder>(
-      `/api/franchises/${franchiseId}/store-orders`,
+    (await adminApi.post<ApiResponse<StoreOrder>>(
+      `/franchises/${franchiseId}/store-orders`,
       payload
     )).data,
 
@@ -30,19 +31,19 @@ export const storeOrdersApi = {
     orderId: number,
     payload: UpdateStoreOrderPayload
   ) =>
-    (await adminApi.put<StoreOrder>(
-      `/api/franchises/${franchiseId}/store-orders/${orderId}`,
+    (await adminApi.put<ApiResponse<StoreOrder>>(
+      `/franchises/${franchiseId}/store-orders/${orderId}`,
       payload
     )).data,
 
   submit: async (franchiseId: number, orderId: number) =>
-    (await adminApi.post(
-      `/api/franchises/${franchiseId}/store-orders/${orderId}/submit`
+    (await adminApi.post<ApiResponse<StoreOrder>>(
+      `/franchises/${franchiseId}/store-orders/${orderId}/submit`
     )).data,
 
   lock: async (franchiseId: number, orderId: number) =>
-    (await adminApi.post(
-      `/api/franchises/${franchiseId}/store-orders/${orderId}/lock`
+    (await adminApi.post<ApiResponse<StoreOrder>>(
+      `/franchises/${franchiseId}/store-orders/${orderId}/lock`
     )).data,
 
   cancel: async (
@@ -50,8 +51,8 @@ export const storeOrdersApi = {
     orderId: number,
     payload: CancelStoreOrderPayload
   ) =>
-    (await adminApi.post(
-      `/api/franchises/${franchiseId}/store-orders/${orderId}/cancel`,
+    (await adminApi.post<ApiResponse<StoreOrder>>(
+      `/franchises/${franchiseId}/store-orders/${orderId}/cancel`,
       payload
     )).data,
 };
