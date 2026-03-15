@@ -1,6 +1,22 @@
 import React from 'react';
 
-type Status = 'pending' | 'processing' | 'delivered' | 'cancelled' | 'scheduled' | 'in_transit' | 'delayed' | 'planned' | 'in_progress' | 'completed' | 'active' | 'inactive';
+type Status =
+  | 'pending'
+  | 'processing'
+  | 'delivered'
+  | 'cancelled'
+  | 'scheduled'
+  | 'in_transit'
+  | 'delayed'
+  | 'planned'
+  | 'in_progress'
+  | 'completed'
+  | 'active'
+  | 'inactive'
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'LOCKED'
+  | 'CANCELLED';
 
 interface StatusBadgeProps {
   status: Status;
@@ -20,11 +36,16 @@ const statusConfig: Record<Status, { label: string; className: string }> = {
   completed: { label: 'Hoàn thành', className: 'status-badge status-delivered' },
   active: { label: 'Hoạt động', className: 'status-badge status-delivered' },
   inactive: { label: 'Ngừng hoạt động', className: 'status-badge status-cancelled' },
+
+  DRAFT: { label: 'Nháp', className: 'status-badge status-pending' },
+  SUBMITTED: { label: 'Đã gửi', className: 'status-badge status-processing' },
+  LOCKED: { label: 'Đã khóa', className: 'status-badge status-delivered' },
+  CANCELLED: { label: 'Đã hủy', className: 'status-badge status-cancelled' },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '' }) => {
   const config = statusConfig[status];
-  
+
   return (
     <span className={`${config.className} ${className}`}>
       {config.label}

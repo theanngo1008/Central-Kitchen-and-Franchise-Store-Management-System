@@ -23,6 +23,7 @@ type Props = {
 
   submitting?: boolean;
   canSubmit: boolean;
+  mode?: "create" | "edit";
 };
 
 const OrderPanel: React.FC<Props> = ({
@@ -37,6 +38,7 @@ const OrderPanel: React.FC<Props> = ({
   onCreateAndSubmit,
   submitting,
   canSubmit,
+  mode = "create",
 }) => {
   const total = useMemo(() => {
     return items.reduce((sum, it) => sum + (it.price ?? 0) * it.quantity, 0);
@@ -46,7 +48,7 @@ const OrderPanel: React.FC<Props> = ({
     <div className="bg-card rounded-xl border p-6 sticky top-8">
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <ShoppingCart size={20} />
-        Đơn hàng
+        {mode === "edit" ? "Chỉnh sửa đơn hàng" : "Đơn hàng"}
       </h2>
 
       {items.length === 0 ? (
@@ -76,6 +78,7 @@ const OrderPanel: React.FC<Props> = ({
           canSubmit={canSubmit}
           onCreateDraft={onCreateDraft}
           onCreateAndSubmit={onCreateAndSubmit}
+          mode={mode}
         />
       </div>
     </div>

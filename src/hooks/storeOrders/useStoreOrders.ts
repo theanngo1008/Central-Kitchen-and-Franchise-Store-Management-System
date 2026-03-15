@@ -4,7 +4,7 @@ import type { StoreOrderQuery } from "@/types/store/storeOrder.types";
 
 export const useStoreOrders = (
   franchiseId: number,
-  params?: StoreOrderQuery,
+  params?: StoreOrderQuery
 ) => {
   return useQuery({
     queryKey: ["storeOrders", franchiseId, params],

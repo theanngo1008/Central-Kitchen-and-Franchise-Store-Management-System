@@ -6,6 +6,7 @@ type Props = {
   canSubmit: boolean;
   onCreateDraft: () => void;
   onCreateAndSubmit: () => void;
+  mode?: "create" | "edit";
 };
 
 const SubmitOrderButton: React.FC<Props> = ({
@@ -13,7 +14,10 @@ const SubmitOrderButton: React.FC<Props> = ({
   canSubmit,
   onCreateDraft,
   onCreateAndSubmit,
+  mode = "create",
 }) => {
+  const isEdit = mode === "edit";
+
   return (
     <div className="flex gap-3">
       <Button
@@ -23,7 +27,7 @@ const SubmitOrderButton: React.FC<Props> = ({
         disabled={!canSubmit || !!submitting}
         onClick={onCreateDraft}
       >
-        Lưu nháp
+        {isEdit ? "Lưu chỉnh sửa" : "Lưu nháp"}
       </Button>
 
       <Button
@@ -32,7 +36,7 @@ const SubmitOrderButton: React.FC<Props> = ({
         disabled={!canSubmit || !!submitting}
         onClick={onCreateAndSubmit}
       >
-        Gửi đơn hàng
+        {isEdit ? "Cập nhật & Gửi" : "Gửi đơn hàng"}
       </Button>
     </div>
   );
