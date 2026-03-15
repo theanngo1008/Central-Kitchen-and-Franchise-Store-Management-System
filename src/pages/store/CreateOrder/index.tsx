@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { toast } from "sonner";
-import { Plus, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import CatalogList from "./components/CatalogList";
 import OrderPanel from "./components/OrderPanel";
@@ -9,9 +10,14 @@ import OrderPanel from "./components/OrderPanel";
 import { useStoreCatalog } from "@/hooks/storeOrders/useStoreCatalog";
 import { useCreateStoreOrder } from "@/hooks/storeOrders/useCreateStoreOrder";
 import { useSubmitStoreOrder } from "@/hooks/storeOrders/useSubmitStoreOrder";
+import { useUpdateStoreOrder } from "@/hooks/storeOrders/useUpdateStoreOrder";
+import { useStoreOrderDetail } from "@/hooks/storeOrders/useStoreOrderDetail";
 
 import type { StoreCatalogItem } from "@/types/store/storeCatalog.types";
-import type { CreateStoreOrderPayload } from "@/types/store/storeOrder.types";
+import type {
+  CreateStoreOrderPayload,
+  UpdateStoreOrderPayload,
+} from "@/types/store/storeOrder.types";
 
 type OrderDraftItem = {
   productId: number;
@@ -22,7 +28,6 @@ type OrderDraftItem = {
 };
 
 const getCurrentFranchiseId = () => {
-  // TODO: đổi theo project bạn nếu đã có auth context
   const keys = ["franchiseId", "selectedFranchiseId", "currentFranchiseId"];
   for (const k of keys) {
     const v = localStorage.getItem(k);
@@ -33,6 +38,11 @@ const getCurrentFranchiseId = () => {
 
 const CreateOrderPage: React.FC = () => {
   const franchiseId = getCurrentFranchiseId();
+  const navigate = useNavigate();
+  const { orderId, storeId } = useParams();
+
+  const isEditMode = !!orderId;
+  const parsedOrderId = orderId ? Number(orderId) : 0;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [orderDate, setOrderDate] = useState(() => {
@@ -44,7 +54,6 @@ const CreateOrderPage: React.FC = () => {
   });
   const [note, setNote] = useState("");
 
-  // draft items keyed by productId
   const [itemsMap, setItemsMap] = useState<Record<number, OrderDraftItem>>({});
 
   const {
@@ -53,10 +62,38 @@ const CreateOrderPage: React.FC = () => {
     refetch: refetchCatalog,
   } = useStoreCatalog(franchiseId);
 
+  const {
+    data: detailResponse,
+    isLoading: loadingDetail,
+  } = useStoreOrderDetail(franchiseId, parsedOrderId);
+
   const catalog = catalogResponse?.data?.items ?? [];
+  const detailOrder = detailResponse?.data;
 
   const createOrder = useCreateStoreOrder(franchiseId);
   const submitOrder = useSubmitStoreOrder(franchiseId);
+  const updateOrder = useUpdateStoreOrder(franchiseId);
+
+  useEffect(() => {
+    if (!isEditMode || !detailOrder) return;
+
+    setOrderDate(detailOrder.orderDate);
+
+    const nextItemsMap: Record<number, OrderDraftItem> = {};
+    detailOrder.items.forEach((item) => {
+      const catalogItem = catalog.find((c) => c.productId === item.productId);
+
+      nextItemsMap[item.productId] = {
+        productId: item.productId,
+        productName: item.productName,
+        unit: item.unit,
+        price: catalogItem?.price,
+        quantity: item.quantity,
+      };
+    });
+
+    setItemsMap(nextItemsMap);
+  }, [isEditMode, detailOrder, catalog]);
 
   const filteredCatalog = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -129,21 +166,39 @@ const CreateOrderPage: React.FC = () => {
     return orderItems.every((x) => x.quantity > 0);
   }, [franchiseId, orderDate, orderItems]);
 
-  const buildPayload = (): CreateStoreOrderPayload => {
+  const buildPayload = (): CreateStoreOrderPayload | UpdateStoreOrderPayload => {
     return {
       orderDate,
       items: orderItems.map((it) => ({
         productId: it.productId,
         quantity: it.quantity,
       })),
-      // NOTE: note currently not in payload type -> nếu BE có nhận thì thêm field vào type + payload
     };
   };
 
   const handleCreateDraft = async () => {
     if (!canSubmit) return;
+
+    if (isEditMode) {
+      try {
+        const payload = buildPayload() as UpdateStoreOrderPayload;
+
+        await updateOrder.mutateAsync({
+          orderId: parsedOrderId,
+          payload,
+        });
+
+        toast.success(`Đã cập nhật đơn #${parsedOrderId}`);
+        navigate(`/stores/${storeId ?? franchiseId}/orders`);
+      } catch (e) {
+        console.error(e);
+        toast.error("Cập nhật đơn thất bại");
+      }
+      return;
+    }
+
     try {
-      const payload = buildPayload();
+      const payload = buildPayload() as CreateStoreOrderPayload;
       const created = await createOrder.mutateAsync(payload);
       const storeOrderId = created?.data?.storeOrderId;
 
@@ -163,8 +218,27 @@ const CreateOrderPage: React.FC = () => {
 
   const handleCreateAndSubmit = async () => {
     if (!canSubmit) return;
+
+    if (isEditMode) {
+      try {
+        const payload = buildPayload() as UpdateStoreOrderPayload;
+
+        await updateOrder.mutateAsync({
+          orderId: parsedOrderId,
+          payload,
+        });
+
+        toast.success(`Đã cập nhật đơn #${parsedOrderId}`);
+        navigate(`/stores/${storeId ?? franchiseId}/orders`);
+      } catch (e) {
+        console.error(e);
+        toast.error("Cập nhật đơn thất bại");
+      }
+      return;
+    }
+
     try {
-      const payload = buildPayload();
+      const payload = buildPayload() as CreateStoreOrderPayload;
       const created = await createOrder.mutateAsync(payload);
       const storeOrderId = created?.data?.storeOrderId;
 
@@ -193,11 +267,16 @@ const CreateOrderPage: React.FC = () => {
     }
   };
 
+  const pageTitle = isEditMode ? "Chỉnh sửa đơn hàng" : "Tạo đơn đặt hàng";
+  const pageSubtitle = isEditMode
+    ? `Cập nhật thông tin đơn hàng #${parsedOrderId}`
+    : "Chọn sản phẩm từ catalog và tạo Store Order";
+
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Tạo đơn đặt hàng"
-        subtitle="Chọn sản phẩm từ catalog và tạo Store Order"
+        title={pageTitle}
+        subtitle={pageSubtitle}
         action={{
           label: "Refresh",
           icon: RefreshCw,
@@ -205,7 +284,6 @@ const CreateOrderPage: React.FC = () => {
         }}
       />
 
-      {/* Stats giống UserManagement */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-2xl font-bold">{stats.totalCatalog}</p>
@@ -229,11 +307,10 @@ const CreateOrderPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Layout: left catalog - right order */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7">
           <CatalogList
-            loading={loadingCatalog}
+            loading={loadingCatalog || (isEditMode && loadingDetail)}
             items={filteredCatalog}
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
@@ -253,8 +330,13 @@ const CreateOrderPage: React.FC = () => {
             onRemoveItem={handleRemoveItem}
             onCreateDraft={handleCreateDraft}
             onCreateAndSubmit={handleCreateAndSubmit}
-            submitting={createOrder.isPending || submitOrder.isPending}
+            submitting={
+              createOrder.isPending ||
+              submitOrder.isPending ||
+              updateOrder.isPending
+            }
             canSubmit={canSubmit}
+            mode={isEditMode ? "edit" : "create"}
           />
         </div>
       </div>

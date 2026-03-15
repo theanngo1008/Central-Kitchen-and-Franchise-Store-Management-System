@@ -1,8 +1,8 @@
 export type StoreOrderStatus =
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'LOCKED'
-  | 'CANCELLED';
+  | "DRAFT"
+  | "SUBMITTED"
+  | "LOCKED"
+  | "CANCELLED";
 
 export interface StoreOrderItem {
   productId: number;
@@ -22,31 +22,35 @@ export interface StoreOrder {
   createdAt: string;
   updatedAt: string;
 
-  submittedAt?: string;
-  lockedAt?: string;
-  cancelledAt?: string;
+  submittedAt?: string | null;
+  lockedAt?: string | null;
+  cancelledAt?: string | null;
 
-  cancelReason?: string;
+  cancelReason?: string | null;
 
   items: StoreOrderItem[];
 }
 
+export interface StoreOrderListData {
+  items: StoreOrder[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface StoreOrderQuery {
-  status?: string;
-
-  fromDate?: string;
-  toDate?: string;
-
-  page?: number;
-  pageSize?: number;
-
-  sortBy?: string;
-  sortDir?: string;
+  Status?: string;
+  FromDate?: string;
+  ToDate?: string;
+  Page?: number;
+  PageSize?: number;
+  SortBy?: string;
+  SortDir?: string;
 }
 
 export interface CreateStoreOrderPayload {
   orderDate: string;
-
   items: {
     productId: number;
     quantity: number;
@@ -55,7 +59,6 @@ export interface CreateStoreOrderPayload {
 
 export interface UpdateStoreOrderPayload {
   orderDate: string;
-
   items: {
     productId: number;
     quantity: number;

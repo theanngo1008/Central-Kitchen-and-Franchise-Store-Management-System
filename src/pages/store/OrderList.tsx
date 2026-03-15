@@ -1,104 +1,240 @@
-import React, { useMemo, useState } from 'react';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import React, { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { DataTable } from "@/components/ui/DataTable";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { mockOrders, Order } from '@/data/mockData';
-import { Search, Eye, ClipboardList, Package, CheckCircle2, Clock3 } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  Search,
+  Eye,
+  Pencil,
+  ClipboardList,
+  Package,
+  CheckCircle2,
+  Clock3,
+  XCircle,
+} from "lucide-react";
+
+import { useStoreOrders } from "@/hooks/storeOrders/useStoreOrders";
+import { useCancelStoreOrder } from "@/hooks/storeOrders/useCancelStoreOrder";
+import type { StoreOrder } from "@/types/store/storeOrder.types";
+
+type OrderRow = StoreOrder & {
+  id: string;
+};
+
+const getCurrentFranchiseId = () => {
+  const keys = ["franchiseId", "selectedFranchiseId", "currentFranchiseId"];
+  for (const k of keys) {
+    const v = localStorage.getItem(k);
+    if (v && !Number.isNaN(Number(v))) return Number(v);
+  }
+  return 0;
+};
 
 const OrderList: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const franchiseId = getCurrentFranchiseId();
+  const navigate = useNavigate();
+  const { storeId } = useParams();
 
-  const storeOrders = useMemo(() => {
-    return mockOrders.filter((o) => o.storeName === 'Chi nhánh Quận 1');
-  }, []);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
+
+  const [cancelingOrder, setCancelingOrder] = useState<StoreOrder | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+
+  const queryParams = useMemo(() => {
+    return {
+      Status: statusFilter === "ALL" ? undefined : statusFilter,
+      Page: 1,
+      PageSize: 20,
+      SortBy: "orderDate",
+      SortDir: "desc",
+    };
+  }, [statusFilter]);
+
+  const {
+    data: ordersResponse,
+    isLoading,
+    refetch,
+  } = useStoreOrders(franchiseId, queryParams);
+
+  const cancelOrder = useCancelStoreOrder(franchiseId);
+
+  const orders = ordersResponse?.data?.items ?? [];
 
   const filteredOrders = useMemo(() => {
-    return storeOrders.filter((order) => {
-      const matchSearch =
-        order.id.toLowerCase().includes(search.toLowerCase()) ||
-        order.storeName.toLowerCase().includes(search.toLowerCase());
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return orders;
 
-      const matchStatus =
-        statusFilter === 'all' ? true : order.status === statusFilter;
-
-      return matchSearch && matchStatus;
+    return orders.filter((order) => {
+      return (
+        String(order.storeOrderId).includes(keyword) ||
+        order.status.toLowerCase().includes(keyword) ||
+        order.orderDate.toLowerCase().includes(keyword)
+      );
     });
-  }, [storeOrders, search, statusFilter]);
+  }, [orders, search]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
+  const tableData: OrderRow[] = filteredOrders.map((order) => ({
+    ...order,
+    id: String(order.storeOrderId),
+  }));
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("vi-VN", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const getTotalQty = (order: StoreOrder) =>
+    order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const canModifyOrder = (order: StoreOrder) => {
+    const isLockedByTime =
+      !!order.lockedAt && new Date(order.lockedAt) <= new Date();
+
+    return (
+      order.status !== "LOCKED" &&
+      order.status !== "CANCELLED" &&
+      !order.cancelledAt &&
+      !isLockedByTime
+    );
   };
 
   const columns = [
     {
-      key: 'id',
-      label: 'Mã đơn',
-      render: (order: Order) => <span className="font-medium">{order.id}</span>,
-    },
-    {
-      key: 'createdAt',
-      label: 'Ngày tạo',
-    },
-    {
-      key: 'deliveryDate',
-      label: 'Ngày giao',
-    },
-    {
-      key: 'itemsCount',
-      label: 'Số món',
-      render: (order: Order) => `${order.items.length} sản phẩm`,
-    },
-    {
-      key: 'totalAmount',
-      label: 'Tổng tiền',
-      render: (order: Order) => (
-        <span className="font-medium">{formatCurrency(order.totalAmount)}</span>
+      key: "storeOrderId",
+      label: "Mã đơn",
+      render: (order: OrderRow) => (
+        <span className="font-medium">#{order.storeOrderId}</span>
       ),
     },
     {
-      key: 'status',
-      label: 'Trạng thái',
-      render: (order: Order) => <StatusBadge status={order.status} />,
+      key: "orderDate",
+      label: "Ngày đặt",
+      render: (order: OrderRow) => formatDateTime(order.orderDate),
     },
     {
-      key: 'actions',
-      label: 'Thao tác',
-      render: (order: Order) => (
-        <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-          <Eye size={16} className="mr-2" />
-          Xem
-        </Button>
+      key: "createdAt",
+      label: "Ngày tạo",
+      render: (order: OrderRow) => formatDateTime(order.createdAt),
+    },
+    {
+      key: "itemsCount",
+      label: "Sản phẩm",
+      render: (order: OrderRow) => `${order.items.length} sản phẩm`,
+    },
+    {
+      key: "totalQty",
+      label: "Tổng SL",
+      render: (order: OrderRow) => getTotalQty(order),
+    },
+    {
+      key: "status",
+      label: "Trạng thái",
+      render: (order: OrderRow) => <StatusBadge status={order.status} />,
+    },
+    {
+      key: "actions",
+      label: "Thao tác",
+      render: (order: OrderRow) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedOrder(order)}
+          >
+            <Eye size={16} className="mr-2" />
+            Xem
+          </Button>
+
+          {canModifyOrder(order) && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigate(
+                    `/stores/${storeId ?? franchiseId}/orders/${order.storeOrderId}/edit`,
+                  );
+                }}
+              >
+                <Pencil size={16} className="mr-2" />
+                Sửa
+              </Button>
+
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setCancelingOrder(order);
+                  setCancelReason("");
+                }}
+              >
+                <XCircle size={16} className="mr-2" />
+                Hủy
+              </Button>
+            </>
+          )}
+        </div>
       ),
     },
   ];
 
-  const pendingCount = storeOrders.filter((o) => o.status === 'pending').length;
-  const processingCount = storeOrders.filter((o) => o.status === 'processing').length;
-  const deliveredCount = storeOrders.filter((o) => o.status === 'delivered').length;
-  const totalOrders = storeOrders.length;
+  const totalOrders = orders.length;
+  const draftCount = orders.filter((o) => o.status === "DRAFT").length;
+  const submittedCount = orders.filter((o) => o.status === "SUBMITTED").length;
+  const lockedCount = orders.filter((o) => o.status === "LOCKED").length;
+  const cancelledCount = orders.filter((o) => o.status === "CANCELLED").length;
+
+  const handleConfirmCancel = async () => {
+    if (!cancelingOrder) return;
+
+    const reason = cancelReason.trim();
+    if (!reason) {
+      toast.error("Vui lòng nhập lý do hủy đơn");
+      return;
+    }
+
+    try {
+      await cancelOrder.mutateAsync({
+        orderId: cancelingOrder.storeOrderId,
+        payload: { reason },
+      });
+
+      toast.success(`Đã hủy đơn #${cancelingOrder.storeOrderId}`);
+      setCancelingOrder(null);
+      setCancelReason("");
+      await refetch();
+    } catch (error) {
+      console.error(error);
+      toast.error("Hủy đơn thất bại");
+    }
+  };
 
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Danh sách đơn hàng"
-        subtitle="Theo dõi toàn bộ đơn hàng của Chi nhánh Quận 1"
+        title="Đơn hàng của tôi"
+        subtitle="Theo dõi và quản lý các đơn đặt hàng của cửa hàng"
       />
 
-      {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4 mb-6">
         <div className="relative">
           <Search
@@ -106,7 +242,7 @@ const OrderList: React.FC = () => {
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            placeholder="Tìm theo mã đơn hàng..."
+            placeholder="Tìm theo mã đơn, trạng thái, ngày đặt..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -123,17 +259,16 @@ const OrderList: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="w-full h-10 rounded-md border bg-background px-3 text-sm"
           >
-            <option value="all">Tất cả</option>
-            <option value="pending">Chờ xử lý</option>
-            <option value="processing">Đang xử lý</option>
-            <option value="delivered">Đã giao</option>
-            <option value="cancelled">Đã huỷ</option>
+            <option value="ALL">Tất cả</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="SUBMITTED">SUBMITTED</option>
+            <option value="LOCKED">LOCKED</option>
+            <option value="CANCELLED">CANCELLED</option>
           </select>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-card rounded-xl border p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
@@ -144,37 +279,48 @@ const OrderList: React.FC = () => {
 
         <div className="bg-card rounded-xl border p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-muted-foreground">Chờ xử lý</p>
+            <p className="text-sm text-muted-foreground">DRAFT</p>
             <Clock3 size={18} className="text-warning" />
           </div>
-          <p className="text-2xl font-semibold">{pendingCount}</p>
+          <p className="text-2xl font-semibold">{draftCount}</p>
         </div>
 
         <div className="bg-card rounded-xl border p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-muted-foreground">Đang xử lý</p>
+            <p className="text-sm text-muted-foreground">SUBMITTED</p>
             <Package size={18} className="text-primary" />
           </div>
-          <p className="text-2xl font-semibold">{processingCount}</p>
+          <p className="text-2xl font-semibold">{submittedCount}</p>
         </div>
 
         <div className="bg-card rounded-xl border p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-muted-foreground">Đã giao</p>
+            <p className="text-sm text-muted-foreground">LOCKED</p>
             <CheckCircle2 size={18} className="text-success" />
           </div>
-          <p className="text-2xl font-semibold">{deliveredCount}</p>
+          <p className="text-2xl font-semibold">{lockedCount}</p>
+        </div>
+
+        <div className="bg-card rounded-xl border p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">CANCELLED</p>
+            <XCircle size={18} className="text-destructive" />
+          </div>
+          <p className="text-2xl font-semibold">{cancelledCount}</p>
         </div>
       </div>
 
-      {/* Table */}
-      <DataTable columns={columns} data={filteredOrders} />
+      <DataTable columns={columns} data={tableData} />
 
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+      <Dialog
+        open={!!selectedOrder}
+        onOpenChange={() => setSelectedOrder(null)}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Chi tiết đơn hàng {selectedOrder?.id}</DialogTitle>
+            <DialogTitle>
+              Chi tiết đơn hàng #{selectedOrder?.storeOrderId}
+            </DialogTitle>
           </DialogHeader>
 
           {selectedOrder && (
@@ -183,32 +329,40 @@ const OrderList: React.FC = () => {
                 <div className="bg-muted/30 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Mã đơn</span>
-                    <span className="font-medium">{selectedOrder.id}</span>
+                    <span className="font-medium">
+                      #{selectedOrder.storeOrderId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Ngày đặt</span>
+                    <span>{formatDateTime(selectedOrder.orderDate)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Ngày tạo</span>
-                    <span>{selectedOrder.createdAt}</span>
+                    <span>{formatDateTime(selectedOrder.createdAt)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Ngày giao</span>
-                    <span>{selectedOrder.deliveryDate}</span>
+                    <span className="text-muted-foreground">Locked at</span>
+                    <span>{formatDateTime(selectedOrder.lockedAt)}</span>
                   </div>
                 </div>
 
                 <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cửa hàng</span>
-                    <span>{selectedOrder.storeName}</span>
-                  </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Trạng thái</span>
                     <StatusBadge status={selectedOrder.status} />
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tổng tiền</span>
-                    <span className="font-medium">
-                      {formatCurrency(selectedOrder.totalAmount)}
-                    </span>
+                    <span className="text-muted-foreground">Submitted at</span>
+                    <span>{formatDateTime(selectedOrder.submittedAt)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cancelled at</span>
+                    <span>{formatDateTime(selectedOrder.cancelledAt)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Lý do hủy</span>
+                    <span>{selectedOrder.cancelReason || "-"}</span>
                   </div>
                 </div>
               </div>
@@ -217,23 +371,25 @@ const OrderList: React.FC = () => {
                 <h3 className="font-semibold mb-3">Danh sách sản phẩm</h3>
                 <div className="border rounded-xl overflow-hidden">
                   <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/40 text-sm font-medium">
-                    <div className="col-span-5">Sản phẩm</div>
+                    <div className="col-span-6">Sản phẩm</div>
                     <div className="col-span-3 text-center">Số lượng</div>
-                    <div className="col-span-2 text-center">Đơn vị</div>
-                    <div className="col-span-2 text-right">Ghi chú</div>
+                    <div className="col-span-3 text-center">Đơn vị</div>
                   </div>
 
                   <div className="divide-y">
-                    {selectedOrder.items.map((item, index) => (
+                    {selectedOrder.items.map((item) => (
                       <div
-                        key={index}
+                        key={item.productId}
                         className="grid grid-cols-12 gap-2 px-4 py-3 text-sm"
                       >
-                        <div className="col-span-5 font-medium">{item.productName}</div>
-                        <div className="col-span-3 text-center">{item.quantity}</div>
-                        <div className="col-span-2 text-center">{item.unit}</div>
-                        <div className="col-span-2 text-right text-muted-foreground">
-                          -
+                        <div className="col-span-6 font-medium">
+                          {item.productName}
+                        </div>
+                        <div className="col-span-3 text-center">
+                          {item.quantity}
+                        </div>
+                        <div className="col-span-3 text-center">
+                          {item.unit}
                         </div>
                       </div>
                     ))}
@@ -242,12 +398,69 @@ const OrderList: React.FC = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button variant="outline" onClick={() => setSelectedOrder(null)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedOrder(null)}
+                >
                   Đóng
                 </Button>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!cancelingOrder}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelingOrder(null);
+            setCancelReason("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Hủy đơn hàng #{cancelingOrder?.storeOrderId}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Bạn có chắc chắn muốn hủy đơn này không? Vui lòng nhập lý do hủy.
+            </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="cancelReason">Lý do hủy</Label>
+              <Textarea
+                id="cancelReason"
+                placeholder="Nhập lý do hủy đơn..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCancelingOrder(null);
+                  setCancelReason("");
+                }}
+              >
+                Đóng
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmCancel}
+                disabled={cancelOrder.isPending}
+              >
+                {cancelOrder.isPending ? "Đang hủy..." : "Xác nhận hủy"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -63,11 +63,15 @@ const App = () => (
 
             <Route element={<MainLayout />}>
               <Route path="/profile" element={<Profile />} />
-              
+
               {/* Store Routes */}
               <Route path="/stores/:storeId" element={<StoreDashboard />} />
               <Route
                 path="/stores/:storeId/orders/new"
+                element={<CreateOrderPage />}
+              />
+              <Route
+                path="/stores/:storeId/orders/:orderId/edit"
                 element={<CreateOrderPage />}
               />
               <Route path="/stores/:storeId/orders" element={<OrderList />} />
@@ -124,9 +128,18 @@ const App = () => (
                 element={<InventoryOverview />}
               />
               <Route path="/manager/reports" element={<Reports />} />
-              <Route path="/manager/ingredients" element={<IngredientManagement />} />
-              <Route path="/manager/store-catalog" element={<StoreCatalogManagement />} />
-              <Route path="/manager/suppliers" element={<SupplierManagement />} />
+              <Route
+                path="/manager/ingredients"
+                element={<IngredientManagement />}
+              />
+              <Route
+                path="/manager/store-catalog"
+                element={<StoreCatalogManagement />}
+              />
+              <Route
+                path="/manager/suppliers"
+                element={<SupplierManagement />}
+              />
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
