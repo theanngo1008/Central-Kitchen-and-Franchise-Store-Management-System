@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -21,6 +22,7 @@ import {
 
 const IncomingOrdersPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const centralKitchenId = Number(localStorage.getItem("centralKitchenId") ?? 0);
 
@@ -80,7 +82,15 @@ const IncomingOrdersPage: React.FC = () => {
   };
 
   const handleCreateProductionPlan = (order: IncomingOrder) => {
-    toast.info(`Create Production Plan for SO-${order.storeOrderId} in next task`);
+    navigate("/kitchen/production", {
+      state: {
+        planDate: order.orderDate,
+        source: "incoming-order",
+        storeOrderId: order.storeOrderId,
+        orderCode: `SO-${order.storeOrderId}`,
+        franchiseName: order.franchiseName,
+      },
+    });
   };
 
   if (!user) return null;

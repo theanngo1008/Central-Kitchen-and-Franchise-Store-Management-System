@@ -20,12 +20,18 @@ export const INCOMING_ORDER_FILTER_OPTIONS: Array<{
 
 export const getIncomingOrders = (
   orders: IncomingOrder[],
-  filter: IncomingOrdersFilter = INCOMING_ORDER_DEFAULT_FILTER
+  filter: IncomingOrdersFilter = INCOMING_ORDER_DEFAULT_FILTER,
 ): IncomingOrder[] => {
   if (!Array.isArray(orders) || orders.length === 0) return [];
 
   if (filter === "ALL") {
     return [...orders];
+  }
+
+  if (filter === "LOCKED") {
+    return orders.filter(
+      (order) => order.status === "LOCKED" || !!order.lockedAt,
+    );
   }
 
   return orders.filter((order) => order.status === filter);
@@ -46,7 +52,7 @@ export const canProcessIncomingOrder = (order: IncomingOrder): boolean => {
 };
 
 export const canCreateProductionPlan = (order: IncomingOrder): boolean => {
-  return order.status === "SUBMITTED";
+  return order.status === "LOCKED" || !!order.lockedAt;
 };
 
 export const hasOrderBeenSubmitted = (order: IncomingOrder): boolean => {
@@ -63,7 +69,7 @@ export const hasOrderBeenCancelled = (order: IncomingOrder): boolean => {
 
 export const formatDate = (
   value?: string | null,
-  locale: string = "vi-VN"
+  locale: string = "vi-VN",
 ): string => {
   if (!value) return "--";
 
@@ -75,7 +81,7 @@ export const formatDate = (
 
 export const formatDateTime = (
   value?: string | null,
-  locale: string = "vi-VN"
+  locale: string = "vi-VN",
 ): string => {
   if (!value) return "--";
 
@@ -121,9 +127,15 @@ export const getOrderTimeline = (order: IncomingOrder) => {
 };
 
 export const getIncomingOrdersSummary = (orders: IncomingOrder[]) => {
-  const submittedOrders = orders.filter((order) => order.status === "SUBMITTED");
-  const lockedOrders = orders.filter((order) => order.status === "LOCKED");
-  const cancelledOrders = orders.filter((order) => order.status === "CANCELLED");
+  const submittedOrders = orders.filter(
+    (order) => order.status === "SUBMITTED",
+  );
+  const lockedOrders = orders.filter(
+    (order) => order.status === "LOCKED" || !!order.lockedAt,
+  );
+  const cancelledOrders = orders.filter(
+    (order) => order.status === "CANCELLED",
+  );
   const draftOrders = orders.filter((order) => order.status === "DRAFT");
 
   return {
@@ -132,15 +144,20 @@ export const getIncomingOrdersSummary = (orders: IncomingOrder[]) => {
     lockedOrders: lockedOrders.length,
     cancelledOrders: cancelledOrders.length,
     draftOrders: draftOrders.length,
-    totalItems: orders.reduce((total, order) => total + getOrderItemCount(order), 0),
+    totalItems: orders.reduce(
+      (total, order) => total + getOrderItemCount(order),
+      0,
+    ),
     totalQuantity: orders.reduce(
       (total, order) => total + getOrderTotalQuantity(order),
-      0
+      0,
     ),
   };
 };
 
-export const sortOrdersByNewest = (orders: IncomingOrder[]): IncomingOrder[] => {
+export const sortOrdersByNewest = (
+  orders: IncomingOrder[],
+): IncomingOrder[] => {
   return [...orders].sort((a, b) => {
     const aTime = new Date(a.createdAt).getTime();
     const bTime = new Date(b.createdAt).getTime();
