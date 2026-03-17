@@ -28,12 +28,6 @@ export const getIncomingOrders = (
     return [...orders];
   }
 
-  if (filter === "LOCKED") {
-    return orders.filter(
-      (order) => order.status === "LOCKED" || !!order.lockedAt,
-    );
-  }
-
   return orders.filter((order) => order.status === filter);
 };
 
@@ -52,19 +46,19 @@ export const canProcessIncomingOrder = (order: IncomingOrder): boolean => {
 };
 
 export const canCreateProductionPlan = (order: IncomingOrder): boolean => {
-  return order.status === "LOCKED" || !!order.lockedAt;
+  return order.status === "LOCKED";
 };
 
 export const hasOrderBeenSubmitted = (order: IncomingOrder): boolean => {
-  return !!order.submittedAt;
+  return order.status === "SUBMITTED" || !!order.submittedAt;
 };
 
 export const hasOrderBeenLocked = (order: IncomingOrder): boolean => {
-  return !!order.lockedAt;
+  return order.status === "LOCKED";
 };
 
 export const hasOrderBeenCancelled = (order: IncomingOrder): boolean => {
-  return !!order.cancelledAt;
+  return order.status === "CANCELLED" || !!order.cancelledAt;
 };
 
 export const formatDate = (
@@ -115,13 +109,13 @@ export const getOrderTimeline = (order: IncomingOrder) => {
       key: "locked",
       label: "Locked",
       value: order.lockedAt ?? null,
-      visible: !!order.lockedAt,
+      visible: !!order.status && order.status === "LOCKED",
     },
     {
       key: "cancelled",
       label: "Cancelled",
       value: order.cancelledAt ?? null,
-      visible: !!order.cancelledAt,
+      visible: !!order.status && order.status === "CANCELLED",
     },
   ].filter((item) => item.visible);
 };
@@ -131,7 +125,7 @@ export const getIncomingOrdersSummary = (orders: IncomingOrder[]) => {
     (order) => order.status === "SUBMITTED",
   );
   const lockedOrders = orders.filter(
-    (order) => order.status === "LOCKED" || !!order.lockedAt,
+    (order) => order.status === "LOCKED",
   );
   const cancelledOrders = orders.filter(
     (order) => order.status === "CANCELLED",

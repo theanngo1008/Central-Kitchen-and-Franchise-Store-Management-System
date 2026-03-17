@@ -25,6 +25,16 @@ export const productionPlansApi = {
       )
     ).data,
 
+  getByDate: async (centralKitchenId: number, planDate: string) =>
+    (
+      await adminApi.get<ApiResponse<ProductionPlanDetail>>(
+        `/central-kitchens/${centralKitchenId}/production-plans/by-date`,
+        {
+          params: { planDate },
+        }
+      )
+    ).data,
+
   updateStatus: async (
     centralKitchenId: number,
     productionPlanId: number,

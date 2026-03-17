@@ -10,6 +10,7 @@ import IncomingOrderDetailDialog from "./components/IncomingOrderDetailDialog";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useIncomingOrders } from "@/hooks/kitchen/useIncomingOrders";
+import { useLockIncomingOrder } from "@/hooks/kitchen/useLockIncomingOrder";
 
 import type { StoreOrderQuery } from "@/types/store/storeOrder.types";
 import type { IncomingOrder } from "@/types/kitchen/incomingOrder.types";
@@ -46,16 +47,10 @@ const IncomingOrdersPage: React.FC = () => {
     isLoading,
     isFetching,
     isError,
-    error,
     refetch,
   } = useIncomingOrders(centralKitchenId, queryParams);
 
-  console.log("incomingOrders.response", response);
-  console.log("incomingOrders.isLoading", isLoading);
-  console.log("incomingOrders.isFetching", isFetching);
-  console.log("incomingOrders.isError", isError);
-  console.log("incomingOrders.error", error);
-  console.log("incomingOrders.centralKitchenId", centralKitchenId);
+  const lockIncomingOrderMutation = useLockIncomingOrder();
 
   const rawOrders = response?.data?.items ?? [];
 
@@ -79,6 +74,22 @@ const IncomingOrdersPage: React.FC = () => {
 
   const handleCloseDetail = () => {
     setSelectedOrder(null);
+  };
+
+  const handleLockOrder = async (order: IncomingOrder) => {
+    try {
+      await lockIncomingOrderMutation.mutateAsync({
+        franchiseId: order.franchiseId,
+        orderId: order.storeOrderId,
+      });
+
+      await refetch();
+      toast.success(`Order SO-${order.storeOrderId} locked successfully.`);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to lock incoming order."
+      );
+    }
   };
 
   const handleCreateProductionPlan = (order: IncomingOrder) => {
@@ -141,7 +152,11 @@ const IncomingOrdersPage: React.FC = () => {
       <IncomingOrdersTable
         orders={orders}
         loading={isLoading}
+        lockingOrderId={
+          lockIncomingOrderMutation.variables?.orderId ?? null
+        }
         onViewDetail={handleViewDetail}
+        onLockOrder={handleLockOrder}
         onCreateProductionPlan={handleCreateProductionPlan}
       />
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Eye, ClipboardList } from "lucide-react";
+import { Eye, ClipboardList, Lock } from "lucide-react";
 
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { IncomingOrder } from "@/types/kitchen/incomingOrder.types";
 import {
   canCreateProductionPlan,
+  canProcessIncomingOrder,
   formatDate,
   formatDateTime,
   getOrderDisplayCode,
@@ -18,7 +19,9 @@ import {
 type Props = {
   orders: IncomingOrder[];
   loading?: boolean;
+  lockingOrderId?: number | null;
   onViewDetail: (order: IncomingOrder) => void;
+  onLockOrder?: (order: IncomingOrder) => void;
   onCreateProductionPlan?: (order: IncomingOrder) => void;
 };
 
@@ -29,7 +32,9 @@ type IncomingOrderRow = IncomingOrder & {
 const IncomingOrdersTable: React.FC<Props> = ({
   orders,
   loading = false,
+  lockingOrderId,
   onViewDetail,
+  onLockOrder,
   onCreateProductionPlan,
 }) => {
   const tableData = useMemo<IncomingOrderRow[]>(
@@ -95,7 +100,9 @@ const IncomingOrdersTable: React.FC<Props> = ({
       key: "actions",
       label: "Actions",
       render: (order: IncomingOrderRow) => {
+        const canLock = canProcessIncomingOrder(order);
         const canCreatePlan = canCreateProductionPlan(order);
+        const isLocking = lockingOrderId === order.storeOrderId;
 
         return (
           <div className="flex items-center gap-2">
@@ -107,6 +114,18 @@ const IncomingOrdersTable: React.FC<Props> = ({
               <Eye size={16} className="mr-1" />
               View
             </Button>
+
+            {onLockOrder && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!canLock || isLocking}
+                onClick={() => onLockOrder(order)}
+              >
+                <Lock size={16} className="mr-1" />
+                {isLocking ? "Locking..." : "Lock"}
+              </Button>
+            )}
 
             {onCreateProductionPlan && (
               <Button

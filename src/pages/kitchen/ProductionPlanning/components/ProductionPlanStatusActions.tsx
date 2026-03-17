@@ -38,6 +38,17 @@ const STATUS_OPTIONS: {
   { value: "CANCELLED", label: "Cancel Plan", variant: "destructive" },
 ];
 
+const ALLOWED_TRANSITIONS: Record<
+  ProductionPlanStatus,
+  ProductionPlanStatus[]
+> = {
+  DRAFT: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
 const getDefaultReason = (status: ProductionPlanStatus, planDate: string) => {
   switch (status) {
     case "CONFIRMED":
@@ -64,10 +75,10 @@ const ProductionPlanStatusActions: React.FC<Props> = ({
     useState<ProductionPlanStatus | null>(null);
   const [reason, setReason] = useState("");
 
-  const actions = useMemo(
-    () => STATUS_OPTIONS.filter((item) => item.value !== plan.status),
-    [plan.status]
-  );
+  const actions = useMemo(() => {
+    const allowedStatuses = ALLOWED_TRANSITIONS[plan.status] ?? [];
+    return STATUS_OPTIONS.filter((item) => allowedStatuses.includes(item.value));
+  }, [plan.status]);
 
   const handleOpenDialog = (status: ProductionPlanStatus) => {
     setSelectedStatus(status);
@@ -104,27 +115,37 @@ const ProductionPlanStatusActions: React.FC<Props> = ({
           <StatusBadge status={plan.status} />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {actions.map((action) => (
-            <Button
-              key={action.value}
-              type="button"
-              variant={action.variant ?? "outline"}
-              onClick={() => handleOpenDialog(action.value)}
-              disabled={loading}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </div>
+        {actions.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {actions.map((action) => (
+              <Button
+                key={action.value}
+                type="button"
+                variant={action.variant ?? "outline"}
+                onClick={() => handleOpenDialog(action.value)}
+                disabled={loading}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            No further status actions available for this production plan.
+          </div>
+        )}
       </div>
 
-      <Dialog open={open} onOpenChange={(nextOpen) => !loading && setOpen(nextOpen)}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => !loading && setOpen(nextOpen)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Update Production Plan Status</DialogTitle>
             <DialogDescription>
-              Xác nhận cập nhật trạng thái cho production plan #{plan.productionPlanId}.
+              Xác nhận cập nhật trạng thái cho production plan #
+              {plan.productionPlanId}.
             </DialogDescription>
           </DialogHeader>
 
@@ -146,7 +167,12 @@ const ProductionPlanStatusActions: React.FC<Props> = ({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={loading}
+            >
               Close
             </Button>
             <Button

@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useCreateProductionPlan } from "@/hooks/kitchen/useCreateProductionPlan";
+import { useProductionPlanByDate } from "@/hooks/kitchen/useProductionPlanByDate";
 import { useProductionPlanDetail } from "@/hooks/kitchen/useProductionPlanDetail";
 import { useUpdateProductionPlanStatus } from "@/hooks/kitchen/useUpdateProductionPlanStatus";
 
 import CreateProductionPlanForm from "./components/CreateProductionPlanForm";
-import LoadProductionPlanByIdForm from "./components/LoadProductionPlanByIdForm";
 import ProductionPlanSummaryCard from "./components/ProductionPlanSummaryCard";
 import ProductionPlanItemsTable from "./components/ProductionPlanItemsTable";
 import ProductionPlanStatusActions from "./components/ProductionPlanStatusActions";
@@ -56,9 +56,9 @@ const ProductionPlanningPage: React.FC = () => {
     prefilledPlanDate || getTodayString()
   );
   const [currentPlanId, setCurrentPlanId] = useState<number | null>(null);
-  const [lookupPlanId, setLookupPlanId] = useState<string>("");
 
   const createPlanMutation = useCreateProductionPlan(centralKitchenId);
+  const loadPlanByDateMutation = useProductionPlanByDate(centralKitchenId);
 
   const {
     data: detailResponse,
@@ -87,8 +87,12 @@ const ProductionPlanningPage: React.FC = () => {
       return `Khởi tạo kế hoạch sản xuất từ ${sourceOrderCode} - ${sourceFranchiseName}`;
     }
 
-    return "Tạo kế hoạch sản xuất theo ngày từ các LOCKED orders";
+    return "Tạo hoặc tải kế hoạch sản xuất theo ngày từ các LOCKED orders";
   }, [currentPlan, sourceOrderCode, sourceFranchiseName]);
+
+  const openPlan = (productionPlanId: number) => {
+    setCurrentPlanId(productionPlanId);
+  };
 
   const handleCreatePlan = async () => {
     if (!centralKitchenId) {
@@ -105,35 +109,46 @@ const ProductionPlanningPage: React.FC = () => {
       const response = await createPlanMutation.mutateAsync({ planDate });
       const createdPlanId = response.data.productionPlanId;
 
-      setCurrentPlanId(createdPlanId);
-      setLookupPlanId(String(createdPlanId));
-
+      openPlan(createdPlanId);
       toast.success("Production plan created successfully.");
     } catch (error: any) {
+      const responseData = error?.response?.data;
+      const existingPlanId = responseData?.data?.existingProductionPlanId;
+      const errorCode = responseData?.errorCode;
+
+      if (errorCode === "CONFLICT" && existingPlanId) {
+        openPlan(existingPlanId);
+        toast.info(`Production plan already exists. Opened plan #${existingPlanId}.`);
+        return;
+      }
+
       toast.error(
         getApiErrorMessage(error, "Failed to create production plan.")
       );
     }
   };
 
-  const handleLoadPlanById = async () => {
+  const handleLoadPlanByDate = async () => {
     if (!centralKitchenId) {
       toast.error("Missing centralKitchenId in current login session.");
       return;
     }
 
-    const parsedId = Number(lookupPlanId);
-
-    if (!parsedId || parsedId <= 0) {
-      toast.error("Please enter a valid production plan id.");
+    if (!planDate) {
+      toast.error("Please select plan date.");
       return;
     }
 
     try {
-      setCurrentPlanId(parsedId);
-      toast.success(`Loading production plan #${parsedId}...`);
+      const response = await loadPlanByDateMutation.mutateAsync(planDate);
+      const foundPlanId = response.data.productionPlanId;
+
+      openPlan(foundPlanId);
+      toast.success(`Loaded production plan #${foundPlanId}.`);
     } catch (error: any) {
-      toast.error(getApiErrorMessage(error, "Failed to load production plan."));
+      toast.error(
+        getApiErrorMessage(error, "No production plan found for the selected date.")
+      );
     }
   };
 
@@ -215,12 +230,16 @@ const ProductionPlanningPage: React.FC = () => {
         loading={createPlanMutation.isPending}
       />
 
-      <LoadProductionPlanByIdForm
-        productionPlanId={lookupPlanId}
-        onProductionPlanIdChange={setLookupPlanId}
-        onSubmit={handleLoadPlanById}
-        loading={isPlanLoading}
-      />
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleLoadPlanByDate}
+          disabled={loadPlanByDateMutation.isPending || !planDate}
+        >
+          {loadPlanByDateMutation.isPending ? "Loading..." : "Load Plan"}
+        </Button>
+      </div>
 
       {!currentPlanId ? (
         <div className="rounded-xl border bg-background p-8 text-center">
@@ -228,14 +247,12 @@ const ProductionPlanningPage: React.FC = () => {
             No Production Plan Selected
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Bạn có thể tạo mới theo ngày hoặc tải production plan hiện có bằng
-            ID.
+            Bạn có thể tạo mới hoặc tải production plan theo ngày.
           </p>
         </div>
       ) : detailError ? (
         <div className="rounded-xl border bg-background p-6 text-sm text-destructive">
-          Failed to load production plan detail. Vui lòng kiểm tra lại
-          productionPlanId.
+          Failed to load production plan detail. Vui lòng kiểm tra lại dữ liệu plan.
         </div>
       ) : isPlanLoading && !currentPlan ? (
         <div className="rounded-xl border bg-background p-8 text-center text-sm text-muted-foreground">
@@ -264,10 +281,13 @@ const ProductionPlanningPage: React.FC = () => {
               setCurrentPlanId(null);
             }}
             disabled={
-              createPlanMutation.isPending || isPlanLoading || isStatusUpdating
+              createPlanMutation.isPending ||
+              loadPlanByDateMutation.isPending ||
+              isPlanLoading ||
+              isStatusUpdating
             }
           >
-            Clear Current Plans
+            Clear Current Plan
           </Button>
         </div>
       )}
