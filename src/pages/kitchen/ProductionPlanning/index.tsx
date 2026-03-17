@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, PackageOpen } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -11,13 +11,17 @@ import { useCreateProductionPlan } from "@/hooks/kitchen/useCreateProductionPlan
 import { useProductionPlanByDate } from "@/hooks/kitchen/useProductionPlanByDate";
 import { useProductionPlanDetail } from "@/hooks/kitchen/useProductionPlanDetail";
 import { useUpdateProductionPlanStatus } from "@/hooks/kitchen/useUpdateProductionPlanStatus";
+import { useIssueIngredientsByProductionPlan } from "@/hooks/kitchen/useIssueIngredientsByProductionPlan";
 
 import CreateProductionPlanForm from "./components/CreateProductionPlanForm";
 import ProductionPlanSummaryCard from "./components/ProductionPlanSummaryCard";
 import ProductionPlanItemsTable from "./components/ProductionPlanItemsTable";
 import ProductionPlanStatusActions from "./components/ProductionPlanStatusActions";
+import IssueIngredientsDialog from "./components/IssueIngredientsDialog";
+import IssuedIngredientsResultDialog from "./components/IssuedIngredientsResultDialog";
 
 import type { ProductionPlanStatus } from "@/types/kitchen/productionPlan.types";
+import type { IssueIngredientsByProductionPlanResult } from "@/types/kitchen/inventoryIssue.types";
 
 type ProductionPlanningLocationState = {
   planDate?: string;
@@ -49,16 +53,21 @@ const ProductionPlanningPage: React.FC = () => {
   const sourceFranchiseName = locationState?.franchiseName ?? "";
 
   const centralKitchenId = Number(
-    localStorage.getItem("centralKitchenId") ?? 0
+    localStorage.getItem("centralKitchenId") ?? 0,
   );
 
   const [planDate, setPlanDate] = useState<string>(
-    prefilledPlanDate || getTodayString()
+    prefilledPlanDate || getTodayString(),
   );
   const [currentPlanId, setCurrentPlanId] = useState<number | null>(null);
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
+  const [issueResult, setIssueResult] =
+    useState<IssueIngredientsByProductionPlanResult | null>(null);
 
   const createPlanMutation = useCreateProductionPlan(centralKitchenId);
   const loadPlanByDateMutation = useProductionPlanByDate(centralKitchenId);
+  const issueIngredientsMutation =
+    useIssueIngredientsByProductionPlan(centralKitchenId);
 
   const {
     data: detailResponse,
@@ -72,11 +81,15 @@ const ProductionPlanningPage: React.FC = () => {
 
   const updateStatusMutation = useUpdateProductionPlanStatus(
     centralKitchenId,
-    currentPlanId ?? 0
+    currentPlanId ?? 0,
   );
 
   const isStatusUpdating = updateStatusMutation.isPending;
   const isPlanLoading = detailLoading || detailFetching;
+
+  const canIssueIngredients =
+    currentPlan?.status === "CONFIRMED" ||
+    currentPlan?.status === "IN_PROGRESS";
 
   const pageSubtitle = useMemo(() => {
     if (currentPlan) {
@@ -92,6 +105,31 @@ const ProductionPlanningPage: React.FC = () => {
 
   const openPlan = (productionPlanId: number) => {
     setCurrentPlanId(productionPlanId);
+  };
+
+  const handleIssueIngredients = async (reason: string) => {
+    if (!currentPlanId || !centralKitchenId) {
+      toast.error("Missing production plan context.");
+      return;
+    }
+
+    try {
+      const response = await issueIngredientsMutation.mutateAsync({
+        productionPlanId: currentPlanId,
+        payload: {
+          reason: reason || undefined,
+        },
+      });
+
+      setIssueDialogOpen(false);
+      setIssueResult(response.data);
+
+      toast.success("Ingredients issued successfully.");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to issue ingredients.",
+      );
+    }
   };
 
   const handleCreatePlan = async () => {
@@ -118,12 +156,14 @@ const ProductionPlanningPage: React.FC = () => {
 
       if (errorCode === "CONFLICT" && existingPlanId) {
         openPlan(existingPlanId);
-        toast.info(`Production plan already exists. Opened plan #${existingPlanId}.`);
+        toast.info(
+          `Production plan already exists. Opened plan #${existingPlanId}.`,
+        );
         return;
       }
 
       toast.error(
-        getApiErrorMessage(error, "Failed to create production plan.")
+        getApiErrorMessage(error, "Failed to create production plan."),
       );
     }
   };
@@ -147,7 +187,10 @@ const ProductionPlanningPage: React.FC = () => {
       toast.success(`Loaded production plan #${foundPlanId}.`);
     } catch (error: any) {
       toast.error(
-        getApiErrorMessage(error, "No production plan found for the selected date.")
+        getApiErrorMessage(
+          error,
+          "No production plan found for the selected date.",
+        ),
       );
     }
   };
@@ -168,7 +211,7 @@ const ProductionPlanningPage: React.FC = () => {
 
   const handleUpdateStatus = async (
     nextStatus: ProductionPlanStatus,
-    reason: string
+    reason: string,
   ) => {
     if (!currentPlanId || !centralKitchenId) {
       toast.error("Missing production plan context.");
@@ -186,7 +229,7 @@ const ProductionPlanningPage: React.FC = () => {
       toast.success(`Production plan updated to ${nextStatus}.`);
     } catch (error: any) {
       toast.error(
-        getApiErrorMessage(error, "Failed to update production plan status.")
+        getApiErrorMessage(error, "Failed to update production plan status."),
       );
     }
   };
@@ -252,7 +295,8 @@ const ProductionPlanningPage: React.FC = () => {
         </div>
       ) : detailError ? (
         <div className="rounded-xl border bg-background p-6 text-sm text-destructive">
-          Failed to load production plan detail. Vui lòng kiểm tra lại dữ liệu plan.
+          Failed to load production plan detail. Vui lòng kiểm tra lại dữ liệu
+          plan.
         </div>
       ) : isPlanLoading && !currentPlan ? (
         <div className="rounded-xl border bg-background p-8 text-center text-sm text-muted-foreground">
@@ -261,6 +305,20 @@ const ProductionPlanningPage: React.FC = () => {
       ) : currentPlan ? (
         <>
           <ProductionPlanSummaryCard plan={currentPlan} />
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setIssueDialogOpen(true)}
+              disabled={
+                !canIssueIngredients || issueIngredientsMutation.isPending
+              }
+            >
+              <PackageOpen className="mr-2 h-4 w-4" />
+              Issue Ingredients
+            </Button>
+          </div>
 
           <ProductionPlanStatusActions
             plan={currentPlan}
@@ -284,13 +342,27 @@ const ProductionPlanningPage: React.FC = () => {
               createPlanMutation.isPending ||
               loadPlanByDateMutation.isPending ||
               isPlanLoading ||
-              isStatusUpdating
+              isStatusUpdating ||
+              issueIngredientsMutation.isPending
             }
           >
             Clear Current Plan
           </Button>
         </div>
       )}
+
+      <IssueIngredientsDialog
+        open={issueDialogOpen}
+        loading={issueIngredientsMutation.isPending}
+        onClose={() => setIssueDialogOpen(false)}
+        onSubmit={handleIssueIngredients}
+      />
+
+      <IssuedIngredientsResultDialog
+        open={!!issueResult}
+        result={issueResult}
+        onClose={() => setIssueResult(null)}
+      />
     </div>
   );
 };
