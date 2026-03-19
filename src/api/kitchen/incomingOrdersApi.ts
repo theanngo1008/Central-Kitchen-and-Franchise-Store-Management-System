@@ -3,11 +3,14 @@ import type { ApiResponse } from "@/types/common/apiResponse.types";
 import type { StoreOrderQuery } from "@/types/store/storeOrder.types";
 import type {
   IncomingOrder,
+  IncomingOrderHistoryItem,
   IncomingOrderListData,
   ReceiveIncomingOrderPayload,
   ReceiveIncomingOrderResponse,
   UpdateProcessingNotePayload,
   UpdateProcessingNoteResponse,
+  ForwardIncomingOrderPayload,
+  ForwardIncomingOrderResponse,
 } from "@/types/kitchen/incomingOrder.types";
 
 export const incomingOrdersApi = {
@@ -47,6 +50,25 @@ export const incomingOrdersApi = {
       await adminApi.patch<UpdateProcessingNoteResponse>(
         `/central-kitchens/${centralKitchenId}/incoming-orders/${orderId}/processing-note`,
         payload
+      )
+    ).data,
+
+  forwardToSupply: async (
+    centralKitchenId: number,
+    orderId: number,
+    payload?: ForwardIncomingOrderPayload
+  ) =>
+    (
+      await adminApi.patch<ForwardIncomingOrderResponse>(
+        `/central-kitchens/${centralKitchenId}/incoming-orders/${orderId}/forward-to-supply`,
+        payload ?? {}
+      )
+    ).data,
+
+  history: async (centralKitchenId: number, orderId: number) =>
+    (
+      await adminApi.get<IncomingOrderHistoryItem[]>(
+        `/central-kitchens/${centralKitchenId}/incoming-orders/${orderId}/history`
       )
     ).data,
 };

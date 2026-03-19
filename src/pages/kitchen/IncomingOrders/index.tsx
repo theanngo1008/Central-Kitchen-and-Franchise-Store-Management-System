@@ -9,7 +9,9 @@ import IncomingOrderDetailDialog from "./components/IncomingOrderDetailDialog";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useIncomingOrders } from "@/hooks/kitchen/useIncomingOrders";
+import { useLockIncomingOrder } from "@/hooks/kitchen/useLockIncomingOrder";
 import { useReceiveIncomingOrder } from "@/hooks/kitchen/useReceiveIncomingOrder";
+import { useForwardIncomingOrder } from "@/hooks/kitchen/useForwardIncomingOrder";
 import { useUpdateProcessingNote } from "@/hooks/kitchen/useUpdateProcessingNote";
 import { incomingOrdersApi } from "@/api/kitchen/incomingOrdersApi";
 
@@ -25,12 +27,16 @@ import {
 const IncomingOrdersPage: React.FC = () => {
   const { user } = useAuth();
 
-  const centralKitchenId = Number(localStorage.getItem("centralKitchenId") ?? 0);
+  const centralKitchenId = Number(
+    localStorage.getItem("centralKitchenId") ?? 0
+  );
 
   const [filter, setFilter] = useState<IncomingOrdersFilter>(
     INCOMING_ORDER_DEFAULT_FILTER
   );
-  const [selectedOrder, setSelectedOrder] = useState<IncomingOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<IncomingOrder | null>(
+    null
+  );
   const [detailLoading, setDetailLoading] = useState(false);
 
   const queryParams = useMemo<StoreOrderQuery>(
@@ -51,7 +57,9 @@ const IncomingOrdersPage: React.FC = () => {
     refetch,
   } = useIncomingOrders(centralKitchenId, queryParams);
 
+  const lockIncomingOrderMutation = useLockIncomingOrder();
   const receiveIncomingOrderMutation = useReceiveIncomingOrder();
+  const forwardIncomingOrderMutation = useForwardIncomingOrder();
   const updateProcessingNoteMutation = useUpdateProcessingNote();
 
   const rawOrders = response?.data?.items ?? [];
@@ -95,6 +103,42 @@ const IncomingOrdersPage: React.FC = () => {
     setDetailLoading(false);
   };
 
+  const handleLockOrder = async (order: IncomingOrder) => {
+    try {
+      const franchiseId = Number(order.franchiseId ?? 0);
+
+      if (!franchiseId) {
+        toast.error("Missing franchiseId. Cannot lock this order.");
+        return;
+      }
+
+      const response = await lockIncomingOrderMutation.mutateAsync({
+        franchiseId,
+        orderId: order.storeOrderId,
+      });
+
+      const result = response?.data;
+
+      await refetch();
+
+      toast.success(
+        response?.message ||
+          `Order SO-${order.storeOrderId} locked successfully.`
+      );
+
+      if (selectedOrder?.storeOrderId === order.storeOrderId) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: result?.status ?? "LOCKED",
+          lockedAt: result?.lockedAt ?? selectedOrder.lockedAt ?? null,
+          updatedAt: result?.updatedAt ?? selectedOrder.updatedAt,
+        });
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to lock order.");
+    }
+  };
+
   const handleReceiveOrder = async (order: IncomingOrder) => {
     try {
       const result = await receiveIncomingOrderMutation.mutateAsync({
@@ -108,7 +152,8 @@ const IncomingOrdersPage: React.FC = () => {
       await refetch();
 
       toast.success(
-        result.message || `Order SO-${order.storeOrderId} received successfully.`
+        result.message ||
+          `Order SO-${order.storeOrderId} received successfully.`
       );
 
       if (selectedOrder?.storeOrderId === order.storeOrderId) {
@@ -135,6 +180,58 @@ const IncomingOrdersPage: React.FC = () => {
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message || "Failed to receive incoming order."
+      );
+    }
+  };
+
+  const handleForwardOrder = async (order: IncomingOrder, note: string = "") => {
+    try {
+      const result = await forwardIncomingOrderMutation.mutateAsync({
+        centralKitchenId,
+        orderId: order.storeOrderId,
+        payload: {
+          forwardNote: note?.trim() || "",
+        },
+      });
+
+      await refetch();
+
+      toast.success(
+        result.message ||
+          `Order SO-${order.storeOrderId} forwarded to supply successfully.`
+      );
+
+      if (selectedOrder?.storeOrderId === order.storeOrderId) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: result.status,
+          receivedAt: result.receivedAt ?? selectedOrder.receivedAt ?? null,
+          receivedBy: result.receivedBy ?? selectedOrder.receivedBy ?? null,
+          receiveNote: result.receiveNote ?? selectedOrder.receiveNote ?? null,
+          processingNote: result.processingNote ?? selectedOrder.processingNote ?? null,
+          processingNoteUpdatedAt:
+            result.processingNoteUpdatedAt ??
+            selectedOrder.processingNoteUpdatedAt ??
+            null,
+          processingNoteUpdatedBy:
+            result.processingNoteUpdatedBy ??
+            selectedOrder.processingNoteUpdatedBy ??
+            null,
+          forwardedAt: result.forwardedAt ?? null,
+          forwardedBy: result.forwardedBy ?? null,
+          forwardNote: result.forwardNote ?? null,
+          preparedAt: result.preparedAt ?? selectedOrder.preparedAt ?? null,
+          preparedBy: result.preparedBy ?? selectedOrder.preparedBy ?? null,
+          preparingNote:
+            result.preparingNote ?? selectedOrder.preparingNote ?? null,
+          updatedAt: result.updatedAt ?? selectedOrder.updatedAt,
+          updatedBy: result.updatedBy ?? selectedOrder.updatedBy ?? null,
+          statusNote: result.statusNote ?? selectedOrder.statusNote ?? null,
+        });
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to forward order to supply."
       );
     }
   };
@@ -242,9 +339,17 @@ const IncomingOrdersPage: React.FC = () => {
       <IncomingOrdersTable
         orders={orders}
         loading={isLoading}
-        receivingOrderId={receiveIncomingOrderMutation.variables?.orderId ?? null}
+        lockingOrderId={lockIncomingOrderMutation.variables?.orderId ?? null}
+        receivingOrderId={
+          receiveIncomingOrderMutation.variables?.orderId ?? null
+        }
+        forwardingOrderId={
+          forwardIncomingOrderMutation.variables?.orderId ?? null
+        }
         onViewDetail={handleViewDetail}
+        onLockOrder={handleLockOrder}
         onReceiveOrder={handleReceiveOrder}
+        onForwardOrder={handleForwardOrder}
       />
 
       <IncomingOrderDetailDialog
@@ -252,8 +357,11 @@ const IncomingOrdersPage: React.FC = () => {
         open={!!selectedOrder || detailLoading}
         onClose={handleCloseDetail}
         onSaveProcessingNote={handleSaveProcessingNote}
+        onForwardToSupply={handleForwardOrder}
         savingProcessingNote={updateProcessingNoteMutation.isPending}
+        forwardingToSupply={forwardIncomingOrderMutation.isPending}
         loading={detailLoading}
+        centralKitchenId={centralKitchenId}
       />
     </div>
   );

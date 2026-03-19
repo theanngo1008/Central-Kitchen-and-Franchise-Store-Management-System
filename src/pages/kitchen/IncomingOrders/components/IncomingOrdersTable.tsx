@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Eye, Hand } from "lucide-react";
+import { Eye, Hand, Lock, Send } from "lucide-react";
 
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 
 import type { IncomingOrder } from "@/types/kitchen/incomingOrder.types";
 import {
+  canForwardIncomingOrder,
+  canLockIncomingOrder,
   canProcessIncomingOrder,
   formatDate,
   formatDateTime,
@@ -18,9 +20,13 @@ import {
 type Props = {
   orders: IncomingOrder[];
   loading?: boolean;
+  lockingOrderId?: number | null;
   receivingOrderId?: number | null;
+  forwardingOrderId?: number | null;
   onViewDetail: (order: IncomingOrder) => void;
+  onLockOrder?: (order: IncomingOrder) => void;
   onReceiveOrder?: (order: IncomingOrder) => void;
+  onForwardOrder?: (order: IncomingOrder, note?: string) => void;
 };
 
 type IncomingOrderRow = IncomingOrder & {
@@ -30,9 +36,13 @@ type IncomingOrderRow = IncomingOrder & {
 const IncomingOrdersTable: React.FC<Props> = ({
   orders,
   loading = false,
+  lockingOrderId,
   receivingOrderId,
+  forwardingOrderId,
   onViewDetail,
+  onLockOrder,
   onReceiveOrder,
+  onForwardOrder,
 }) => {
   const tableData = useMemo<IncomingOrderRow[]>(
     () =>
@@ -102,8 +112,13 @@ const IncomingOrdersTable: React.FC<Props> = ({
       key: "actions",
       label: "Actions",
       render: (order: IncomingOrderRow) => {
+        const canLock = canLockIncomingOrder(order);
         const canReceive = canProcessIncomingOrder(order);
+        const canForward = canForwardIncomingOrder(order);
+
+        const isLocking = lockingOrderId === order.storeOrderId;
         const isReceiving = receivingOrderId === order.storeOrderId;
+        const isForwarding = forwardingOrderId === order.storeOrderId;
 
         return (
           <div className="flex items-center gap-2">
@@ -116,6 +131,18 @@ const IncomingOrdersTable: React.FC<Props> = ({
               View
             </Button>
 
+            {onLockOrder && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!canLock || isLocking}
+                onClick={() => onLockOrder(order)}
+              >
+                <Lock size={16} className="mr-1" />
+                {isLocking ? "Locking..." : "Lock"}
+              </Button>
+            )}
+
             {onReceiveOrder && (
               <Button
                 size="sm"
@@ -125,6 +152,18 @@ const IncomingOrdersTable: React.FC<Props> = ({
               >
                 <Hand size={16} className="mr-1" />
                 {isReceiving ? "Receiving..." : "Receive"}
+              </Button>
+            )}
+
+            {onForwardOrder && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!canForward || isForwarding}
+                onClick={() => onForwardOrder(order, "")}
+              >
+                <Send size={16} className="mr-1" />
+                {isForwarding ? "Forwarding..." : "Forward"}
               </Button>
             )}
           </div>

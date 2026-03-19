@@ -125,3 +125,45 @@ export interface UpdateProcessingNoteResponse {
 
   message?: string | null;
 }
+
+export interface ForwardIncomingOrderPayload {
+  forwardNote?: string | null;
+}
+
+export interface ForwardIncomingOrderResponse {
+  storeOrderId: number;
+  status: IncomingOrderStatus;
+  receivedAt?: string | null;
+  receivedBy?: string | null;
+  receiveNote?: string | null;
+
+  processingNote?: string | null;
+  processingNoteUpdatedAt?: string | null;
+  processingNoteUpdatedBy?: string | null;
+
+  forwardedAt?: string | null;
+  forwardedBy?: string | null;
+  forwardNote?: string | null;
+
+  preparedAt?: string | null;
+  preparedBy?: string | null;
+  preparingNote?: string | null;
+
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+  statusNote?: string | null;
+
+  message?: string | null;
+}
+
+export interface IncomingOrderHistoryItem {
+  historyId: number;
+  storeOrderId: number;
+  actionType: string;
+  actionLabel: string;
+  performedAt: string;
+  performedBy?: string | null;
+  note?: string | null;
+  oldStatus?: IncomingOrderStatus | null;
+  newStatus?: IncomingOrderStatus | null;
+}

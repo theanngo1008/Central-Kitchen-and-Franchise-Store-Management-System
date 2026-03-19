@@ -11,11 +11,12 @@ export const INCOMING_ORDER_FILTER_OPTIONS: Array<{
   label: string;
   value: IncomingOrdersFilter;
 }> = [
+  { label: "All", value: "ALL" },
+  { label: "Submitted", value: "SUBMITTED" },
   { label: "Locked", value: "LOCKED" },
   { label: "Received by Kitchen", value: "RECEIVED_BY_KITCHEN" },
   { label: "Forwarded to Supply", value: "FORWARDED_TO_SUPPLY" },
-  { label: "All", value: "ALL" },
-  { label: "Submitted", value: "SUBMITTED" },
+
   { label: "Preparing", value: "PREPARING" },
   { label: "Ready to Deliver", value: "READY_TO_DELIVER" },
   { label: "In Transit", value: "IN_TRANSIT" },
@@ -24,10 +25,9 @@ export const INCOMING_ORDER_FILTER_OPTIONS: Array<{
   { label: "Cancelled", value: "CANCELLED" },
   { label: "Draft", value: "DRAFT" },
 ];
-
 export const getIncomingOrders = (
   orders: IncomingOrder[],
-  filter: IncomingOrdersFilter = INCOMING_ORDER_DEFAULT_FILTER
+  filter: IncomingOrdersFilter = INCOMING_ORDER_DEFAULT_FILTER,
 ): IncomingOrder[] => {
   if (!Array.isArray(orders) || orders.length === 0) return [];
 
@@ -48,8 +48,16 @@ export const getOrderTotalQuantity = (order: IncomingOrder): number => {
   return order.items.reduce((total, item) => total + (item.quantity || 0), 0);
 };
 
+export const canLockIncomingOrder = (order: IncomingOrder): boolean => {
+  return order.status === "SUBMITTED";
+};
+
 export const canProcessIncomingOrder = (order: IncomingOrder): boolean => {
   return order.status === "LOCKED";
+};
+
+export const canForwardIncomingOrder = (order: IncomingOrder): boolean => {
+  return order.status === "RECEIVED_BY_KITCHEN";
 };
 
 export const hasOrderBeenSubmitted = (order: IncomingOrder): boolean => {
@@ -60,11 +68,15 @@ export const hasOrderBeenLocked = (order: IncomingOrder): boolean => {
   return order.status === "LOCKED" || !!order.lockedAt;
 };
 
-export const hasOrderBeenReceivedByKitchen = (order: IncomingOrder): boolean => {
+export const hasOrderBeenReceivedByKitchen = (
+  order: IncomingOrder,
+): boolean => {
   return order.status === "RECEIVED_BY_KITCHEN" || !!order.receivedAt;
 };
 
-export const hasOrderBeenForwardedToSupply = (order: IncomingOrder): boolean => {
+export const hasOrderBeenForwardedToSupply = (
+  order: IncomingOrder,
+): boolean => {
   return order.status === "FORWARDED_TO_SUPPLY" || !!order.forwardedAt;
 };
 
@@ -74,7 +86,7 @@ export const hasOrderBeenCancelled = (order: IncomingOrder): boolean => {
 
 export const formatDate = (
   value?: string | null,
-  locale: string = "vi-VN"
+  locale: string = "vi-VN",
 ): string => {
   if (!value) return "--";
 
@@ -86,7 +98,7 @@ export const formatDate = (
 
 export const formatDateTime = (
   value?: string | null,
-  locale: string = "vi-VN"
+  locale: string = "vi-VN",
 ): string => {
   if (!value) return "--";
 
@@ -144,15 +156,19 @@ export const getOrderTimeline = (order: IncomingOrder) => {
 };
 
 export const getIncomingOrdersSummary = (orders: IncomingOrder[]) => {
-  const submittedOrders = orders.filter((order) => order.status === "SUBMITTED");
+  const submittedOrders = orders.filter(
+    (order) => order.status === "SUBMITTED",
+  );
   const lockedOrders = orders.filter((order) => order.status === "LOCKED");
   const receivedByKitchenOrders = orders.filter(
-    (order) => order.status === "RECEIVED_BY_KITCHEN"
+    (order) => order.status === "RECEIVED_BY_KITCHEN",
   );
   const forwardedToSupplyOrders = orders.filter(
-    (order) => order.status === "FORWARDED_TO_SUPPLY"
+    (order) => order.status === "FORWARDED_TO_SUPPLY",
   );
-  const cancelledOrders = orders.filter((order) => order.status === "CANCELLED");
+  const cancelledOrders = orders.filter(
+    (order) => order.status === "CANCELLED",
+  );
   const draftOrders = orders.filter((order) => order.status === "DRAFT");
 
   return {
@@ -165,16 +181,18 @@ export const getIncomingOrdersSummary = (orders: IncomingOrder[]) => {
     draftOrders: draftOrders.length,
     totalItems: orders.reduce(
       (total, order) => total + getOrderItemCount(order),
-      0
+      0,
     ),
     totalQuantity: orders.reduce(
       (total, order) => total + getOrderTotalQuantity(order),
-      0
+      0,
     ),
   };
 };
 
-export const sortOrdersByNewest = (orders: IncomingOrder[]): IncomingOrder[] => {
+export const sortOrdersByNewest = (
+  orders: IncomingOrder[],
+): IncomingOrder[] => {
   return [...orders].sort((a, b) => {
     const aTime = new Date(a.createdAt).getTime();
     const bTime = new Date(b.createdAt).getTime();
