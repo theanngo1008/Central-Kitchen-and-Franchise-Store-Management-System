@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -10,7 +9,9 @@ import IncomingOrderDetailDialog from "./components/IncomingOrderDetailDialog";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useIncomingOrders } from "@/hooks/kitchen/useIncomingOrders";
-import { useLockIncomingOrder } from "@/hooks/kitchen/useLockIncomingOrder";
+import { useReceiveIncomingOrder } from "@/hooks/kitchen/useReceiveIncomingOrder";
+import { useUpdateProcessingNote } from "@/hooks/kitchen/useUpdateProcessingNote";
+import { incomingOrdersApi } from "@/api/kitchen/incomingOrdersApi";
 
 import type { StoreOrderQuery } from "@/types/store/storeOrder.types";
 import type { IncomingOrder } from "@/types/kitchen/incomingOrder.types";
@@ -23,7 +24,6 @@ import {
 
 const IncomingOrdersPage: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const centralKitchenId = Number(localStorage.getItem("centralKitchenId") ?? 0);
 
@@ -31,6 +31,7 @@ const IncomingOrdersPage: React.FC = () => {
     INCOMING_ORDER_DEFAULT_FILTER
   );
   const [selectedOrder, setSelectedOrder] = useState<IncomingOrder | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const queryParams = useMemo<StoreOrderQuery>(
     () => ({
@@ -50,7 +51,8 @@ const IncomingOrdersPage: React.FC = () => {
     refetch,
   } = useIncomingOrders(centralKitchenId, queryParams);
 
-  const lockIncomingOrderMutation = useLockIncomingOrder();
+  const receiveIncomingOrderMutation = useReceiveIncomingOrder();
+  const updateProcessingNoteMutation = useUpdateProcessingNote();
 
   const rawOrders = response?.data?.items ?? [];
 
@@ -68,40 +70,128 @@ const IncomingOrdersPage: React.FC = () => {
     }
   };
 
-  const handleViewDetail = (order: IncomingOrder) => {
-    setSelectedOrder(order);
+  const handleViewDetail = async (order: IncomingOrder) => {
+    try {
+      setDetailLoading(true);
+
+      const response = await incomingOrdersApi.detail(
+        centralKitchenId,
+        order.storeOrderId
+      );
+
+      const detail = (response as any)?.data ?? response;
+      setSelectedOrder(detail);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to load order detail."
+      );
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleCloseDetail = () => {
     setSelectedOrder(null);
+    setDetailLoading(false);
   };
 
-  const handleLockOrder = async (order: IncomingOrder) => {
+  const handleReceiveOrder = async (order: IncomingOrder) => {
     try {
-      await lockIncomingOrderMutation.mutateAsync({
-        franchiseId: order.franchiseId,
+      const result = await receiveIncomingOrderMutation.mutateAsync({
+        centralKitchenId,
         orderId: order.storeOrderId,
+        payload: {
+          receiveNote: null,
+        },
       });
 
       await refetch();
-      toast.success(`Order SO-${order.storeOrderId} locked successfully.`);
+
+      toast.success(
+        result.message || `Order SO-${order.storeOrderId} received successfully.`
+      );
+
+      if (selectedOrder?.storeOrderId === order.storeOrderId) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: result.status,
+          receivedAt: result.receivedAt ?? null,
+          receivedBy: result.receivedBy ?? null,
+          receiveNote: result.receiveNote ?? null,
+          processingNote: result.processingNote ?? null,
+          processingNoteUpdatedAt: result.processingNoteUpdatedAt ?? null,
+          processingNoteUpdatedBy: result.processingNoteUpdatedBy ?? null,
+          forwardedAt: result.forwardedAt ?? null,
+          forwardedBy: result.forwardedBy ?? null,
+          forwardNote: result.forwardNote ?? null,
+          preparedAt: result.preparedAt ?? null,
+          preparedBy: result.preparedBy ?? null,
+          preparingNote: result.preparingNote ?? null,
+          updatedAt: result.updatedAt ?? selectedOrder.updatedAt,
+          updatedBy: result.updatedBy ?? selectedOrder.updatedBy ?? null,
+          statusNote: result.statusNote ?? null,
+        });
+      }
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to lock incoming order."
+        error?.response?.data?.message || "Failed to receive incoming order."
       );
     }
   };
 
-  const handleCreateProductionPlan = (order: IncomingOrder) => {
-    navigate("/kitchen/production", {
-      state: {
-        planDate: order.orderDate,
-        source: "incoming-order",
-        storeOrderId: order.storeOrderId,
-        orderCode: `SO-${order.storeOrderId}`,
-        franchiseName: order.franchiseName,
-      },
-    });
+  const handleSaveProcessingNote = async (
+    order: IncomingOrder,
+    note: string
+  ) => {
+    try {
+      const result = await updateProcessingNoteMutation.mutateAsync({
+        centralKitchenId,
+        orderId: order.storeOrderId,
+        payload: {
+          processingNote: note,
+        },
+      });
+
+      await refetch();
+
+      toast.success(
+        result.message ||
+          `Processing note updated for order SO-${order.storeOrderId}.`
+      );
+
+      if (selectedOrder?.storeOrderId === order.storeOrderId) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: result.status,
+          receivedAt: result.receivedAt ?? selectedOrder.receivedAt ?? null,
+          receivedBy: result.receivedBy ?? selectedOrder.receivedBy ?? null,
+          receiveNote: result.receiveNote ?? selectedOrder.receiveNote ?? null,
+          processingNote: result.processingNote ?? null,
+          processingNoteUpdatedAt:
+            result.processingNoteUpdatedAt ??
+            selectedOrder.processingNoteUpdatedAt ??
+            null,
+          processingNoteUpdatedBy:
+            result.processingNoteUpdatedBy ??
+            selectedOrder.processingNoteUpdatedBy ??
+            null,
+          forwardedAt: result.forwardedAt ?? selectedOrder.forwardedAt ?? null,
+          forwardedBy: result.forwardedBy ?? selectedOrder.forwardedBy ?? null,
+          forwardNote: result.forwardNote ?? selectedOrder.forwardNote ?? null,
+          preparedAt: result.preparedAt ?? selectedOrder.preparedAt ?? null,
+          preparedBy: result.preparedBy ?? selectedOrder.preparedBy ?? null,
+          preparingNote:
+            result.preparingNote ?? selectedOrder.preparingNote ?? null,
+          updatedAt: result.updatedAt ?? selectedOrder.updatedAt,
+          updatedBy: result.updatedBy ?? selectedOrder.updatedBy ?? null,
+          statusNote: result.statusNote ?? selectedOrder.statusNote ?? null,
+        });
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to update processing note."
+      );
+    }
   };
 
   if (!user) return null;
@@ -152,18 +242,18 @@ const IncomingOrdersPage: React.FC = () => {
       <IncomingOrdersTable
         orders={orders}
         loading={isLoading}
-        lockingOrderId={
-          lockIncomingOrderMutation.variables?.orderId ?? null
-        }
+        receivingOrderId={receiveIncomingOrderMutation.variables?.orderId ?? null}
         onViewDetail={handleViewDetail}
-        onLockOrder={handleLockOrder}
-        onCreateProductionPlan={handleCreateProductionPlan}
+        onReceiveOrder={handleReceiveOrder}
       />
 
       <IncomingOrderDetailDialog
         order={selectedOrder}
-        open={!!selectedOrder}
+        open={!!selectedOrder || detailLoading}
         onClose={handleCloseDetail}
+        onSaveProcessingNote={handleSaveProcessingNote}
+        savingProcessingNote={updateProcessingNoteMutation.isPending}
+        loading={detailLoading}
       />
     </div>
   );

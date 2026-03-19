@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Eye, ClipboardList, Lock } from "lucide-react";
+import { Eye, Hand } from "lucide-react";
 
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 
 import type { IncomingOrder } from "@/types/kitchen/incomingOrder.types";
 import {
-  canCreateProductionPlan,
   canProcessIncomingOrder,
   formatDate,
   formatDateTime,
@@ -19,10 +18,9 @@ import {
 type Props = {
   orders: IncomingOrder[];
   loading?: boolean;
-  lockingOrderId?: number | null;
+  receivingOrderId?: number | null;
   onViewDetail: (order: IncomingOrder) => void;
-  onLockOrder?: (order: IncomingOrder) => void;
-  onCreateProductionPlan?: (order: IncomingOrder) => void;
+  onReceiveOrder?: (order: IncomingOrder) => void;
 };
 
 type IncomingOrderRow = IncomingOrder & {
@@ -32,10 +30,9 @@ type IncomingOrderRow = IncomingOrder & {
 const IncomingOrdersTable: React.FC<Props> = ({
   orders,
   loading = false,
-  lockingOrderId,
+  receivingOrderId,
   onViewDetail,
-  onLockOrder,
-  onCreateProductionPlan,
+  onReceiveOrder,
 }) => {
   const tableData = useMemo<IncomingOrderRow[]>(
     () =>
@@ -43,7 +40,7 @@ const IncomingOrdersTable: React.FC<Props> = ({
         ...order,
         id: String(order.storeOrderId),
       })),
-    [orders],
+    [orders]
   );
 
   const columns = [
@@ -92,6 +89,11 @@ const IncomingOrdersTable: React.FC<Props> = ({
       render: (order: IncomingOrderRow) => formatDateTime(order.lockedAt),
     },
     {
+      key: "receivedAt",
+      label: "Received At",
+      render: (order: IncomingOrderRow) => formatDateTime(order.receivedAt),
+    },
+    {
       key: "createdAt",
       label: "Created At",
       render: (order: IncomingOrderRow) => formatDateTime(order.createdAt),
@@ -100,9 +102,8 @@ const IncomingOrdersTable: React.FC<Props> = ({
       key: "actions",
       label: "Actions",
       render: (order: IncomingOrderRow) => {
-        const canLock = canProcessIncomingOrder(order);
-        const canCreatePlan = canCreateProductionPlan(order);
-        const isLocking = lockingOrderId === order.storeOrderId;
+        const canReceive = canProcessIncomingOrder(order);
+        const isReceiving = receivingOrderId === order.storeOrderId;
 
         return (
           <div className="flex items-center gap-2">
@@ -115,27 +116,15 @@ const IncomingOrdersTable: React.FC<Props> = ({
               View
             </Button>
 
-            {onLockOrder && (
+            {onReceiveOrder && (
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!canLock || isLocking}
-                onClick={() => onLockOrder(order)}
+                disabled={!canReceive || isReceiving}
+                onClick={() => onReceiveOrder(order)}
               >
-                <Lock size={16} className="mr-1" />
-                {isLocking ? "Locking..." : "Lock"}
-              </Button>
-            )}
-
-            {onCreateProductionPlan && (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!canCreatePlan}
-                onClick={() => onCreateProductionPlan(order)}
-              >
-                <ClipboardList size={16} className="mr-1" />
-                Create Plan
+                <Hand size={16} className="mr-1" />
+                {isReceiving ? "Receiving..." : "Receive"}
               </Button>
             )}
           </div>

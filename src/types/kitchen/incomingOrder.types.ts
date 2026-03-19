@@ -2,6 +2,13 @@ export type IncomingOrderStatus =
   | "DRAFT"
   | "SUBMITTED"
   | "LOCKED"
+  | "RECEIVED_BY_KITCHEN"
+  | "FORWARDED_TO_SUPPLY"
+  | "PREPARING"
+  | "READY_TO_DELIVER"
+  | "IN_TRANSIT"
+  | "DELIVERED"
+  | "RECEIVED_BY_STORE"
   | "CANCELLED";
 
 export interface IncomingOrderItem {
@@ -29,6 +36,25 @@ export interface IncomingOrder {
 
   cancelReason?: string | null;
 
+  receivedAt?: string | null;
+  receivedBy?: string | null;
+  receiveNote?: string | null;
+
+  processingNote?: string | null;
+  processingNoteUpdatedAt?: string | null;
+  processingNoteUpdatedBy?: string | null;
+
+  forwardedAt?: string | null;
+  forwardedBy?: string | null;
+  forwardNote?: string | null;
+
+  preparedAt?: string | null;
+  preparedBy?: string | null;
+  preparingNote?: string | null;
+
+  updatedBy?: string | null;
+  statusNote?: string | null;
+
   items: IncomingOrderItem[];
 }
 
@@ -38,4 +64,64 @@ export interface IncomingOrderListData {
   pageSize: number;
   totalItems: number;
   totalPages: number;
+}
+
+export interface ReceiveIncomingOrderPayload {
+  receiveNote?: string | null;
+}
+
+export interface ReceiveIncomingOrderResponse {
+  storeOrderId: number;
+  status: IncomingOrderStatus;
+  receivedAt?: string | null;
+  receivedBy?: string | null;
+  receiveNote?: string | null;
+
+  processingNote?: string | null;
+  processingNoteUpdatedAt?: string | null;
+  processingNoteUpdatedBy?: string | null;
+
+  forwardedAt?: string | null;
+  forwardedBy?: string | null;
+  forwardNote?: string | null;
+
+  preparedAt?: string | null;
+  preparedBy?: string | null;
+  preparingNote?: string | null;
+
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+  statusNote?: string | null;
+
+  message?: string | null;
+}
+
+export interface UpdateProcessingNotePayload {
+  processingNote: string;
+}
+
+export interface UpdateProcessingNoteResponse {
+  storeOrderId: number;
+  status: IncomingOrderStatus;
+  receivedAt?: string | null;
+  receivedBy?: string | null;
+  receiveNote?: string | null;
+
+  processingNote?: string | null;
+  processingNoteUpdatedAt?: string | null;
+  processingNoteUpdatedBy?: string | null;
+
+  forwardedAt?: string | null;
+  forwardedBy?: string | null;
+  forwardNote?: string | null;
+
+  preparedAt?: string | null;
+  preparedBy?: string | null;
+  preparingNote?: string | null;
+
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+  statusNote?: string | null;
+
+  message?: string | null;
 }

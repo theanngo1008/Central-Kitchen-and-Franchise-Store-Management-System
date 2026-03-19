@@ -4,6 +4,10 @@ import type { StoreOrderQuery } from "@/types/store/storeOrder.types";
 import type {
   IncomingOrder,
   IncomingOrderListData,
+  ReceiveIncomingOrderPayload,
+  ReceiveIncomingOrderResponse,
+  UpdateProcessingNotePayload,
+  UpdateProcessingNoteResponse,
 } from "@/types/kitchen/incomingOrder.types";
 
 export const incomingOrdersApi = {
@@ -19,6 +23,30 @@ export const incomingOrdersApi = {
     (
       await adminApi.get<ApiResponse<IncomingOrder>>(
         `/central-kitchens/${centralKitchenId}/incoming-orders/${orderId}`
+      )
+    ).data,
+
+  receive: async (
+    centralKitchenId: number,
+    orderId: number,
+    payload?: ReceiveIncomingOrderPayload
+  ) =>
+    (
+      await adminApi.patch<ReceiveIncomingOrderResponse>(
+        `/central-kitchens/${centralKitchenId}/incoming-orders/${orderId}/receive`,
+        payload ?? {}
+      )
+    ).data,
+
+  updateProcessingNote: async (
+    centralKitchenId: number,
+    orderId: number,
+    payload: UpdateProcessingNotePayload
+  ) =>
+    (
+      await adminApi.patch<UpdateProcessingNoteResponse>(
+        `/central-kitchens/${centralKitchenId}/incoming-orders/${orderId}/processing-note`,
+        payload
       )
     ).data,
 };

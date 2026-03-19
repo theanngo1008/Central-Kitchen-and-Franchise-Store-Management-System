@@ -1,59 +1,87 @@
 import React from "react";
 
-type Status =
-  | "pending"
-  | "processing"
-  | "delivered"
-  | "cancelled"
-  | "scheduled"
-  | "in_transit"
-  | "delayed"
-  | "planned"
-  | "in_progress"
-  | "completed"
-  | "active"
-  | "inactive"
-  | "DRAFT"
-  | "SUBMITTED"
-  | "LOCKED"
-  | "CONFIRMED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "CANCELLED";
-
 interface StatusBadgeProps {
-  status: Status;
+  status?: string | null;
   className?: string;
 }
 
-const statusConfig: Record<Status, { label: string; className: string }> = {
-  pending: { label: "Chờ xử lý", className: "status-badge status-pending" },
-  processing: { label: "Đang xử lý", className: "status-badge status-processing" },
-  delivered: { label: "Đã giao", className: "status-badge status-delivered" },
-  cancelled: { label: "Đã huỷ", className: "status-badge status-cancelled" },
-  scheduled: { label: "Đã lên lịch", className: "status-badge status-processing" },
-  in_transit: { label: "Đang giao", className: "status-badge status-processing" },
-  delayed: { label: "Trễ hạn", className: "status-badge status-pending" },
-  planned: { label: "Đã lên kế hoạch", className: "status-badge status-pending" },
-  in_progress: { label: "Đang thực hiện", className: "status-badge status-processing" },
-  completed: { label: "Hoàn thành", className: "status-badge status-delivered" },
-  active: { label: "Hoạt động", className: "status-badge status-delivered" },
-  inactive: { label: "Ngừng hoạt động", className: "status-badge status-cancelled" },
-
-  DRAFT: { label: "Nháp", className: "status-badge status-pending" },
-  SUBMITTED: { label: "Đã gửi", className: "status-badge status-processing" },
-  LOCKED: { label: "Đã khóa", className: "status-badge status-locked" },
-  CONFIRMED: { label: "Đã xác nhận", className: "status-badge status-processing" },
-  IN_PROGRESS: { label: "Đang sản xuất", className: "status-badge status-processing" },
-  COMPLETED: { label: "Hoàn thành", className: "status-badge status-delivered" },
-  CANCELLED: { label: "Đã hủy", className: "status-badge status-cancelled" },
+const STATUS_CONFIG: Record<
+  string,
+  {
+    label: string;
+    className: string;
+  }
+> = {
+  DRAFT: {
+    label: "Nháp",
+    className: "bg-slate-100 text-slate-800",
+  },
+  SUBMITTED: {
+    label: "Đã gửi",
+    className: "bg-blue-100 text-blue-800",
+  },
+  LOCKED: {
+    label: "Đã khóa",
+    className: "bg-amber-100 text-amber-800",
+  },
+  RECEIVED_BY_KITCHEN: {
+    label: "Kitchen đã nhận",
+    className: "bg-violet-100 text-violet-800",
+  },
+  FORWARDED_TO_SUPPLY: {
+    label: "Đã chuyển Supply",
+    className: "bg-cyan-100 text-cyan-800",
+  },
+  PREPARING: {
+    label: "Đang chuẩn bị",
+    className: "bg-orange-100 text-orange-800",
+  },
+  READY_TO_DELIVER: {
+    label: "Sẵn sàng giao",
+    className: "bg-indigo-100 text-indigo-800",
+  },
+  IN_TRANSIT: {
+    label: "Đang giao",
+    className: "bg-sky-100 text-sky-800",
+  },
+  DELIVERED: {
+    label: "Đã giao",
+    className: "bg-emerald-100 text-emerald-800",
+  },
+  RECEIVED_BY_STORE: {
+    label: "Store đã nhận",
+    className: "bg-green-100 text-green-800",
+  },
+  CANCELLED: {
+    label: "Đã hủy",
+    className: "bg-red-100 text-red-800",
+  },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
   className = "",
 }) => {
-  const config = statusConfig[status];
+  if (!status) {
+    return (
+      <span className={`bg-gray-100 text-gray-800 px-2 py-1 rounded ${className}`}>
+        --
+      </span>
+    );
+  }
 
-  return <span className={`${config.className} ${className}`}>{config.label}</span>;
+  const config = STATUS_CONFIG[status] ?? {
+    label: status,
+    className: "bg-gray-100 text-gray-800",
+  };
+
+  return (
+    <span
+      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className} ${className}`}
+    >
+      {config.label}
+    </span>
+  );
 };
+
+export default StatusBadge;
