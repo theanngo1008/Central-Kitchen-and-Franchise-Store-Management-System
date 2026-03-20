@@ -16,6 +16,9 @@ export interface Ingredient {
 export interface IngredientFormData {
     name: string;
     unit: string;
+    supplierId: number | null;
+    shelfLifeDays: number;
+    price: number;
     safetyStock: number;
     wasteThreshold: number;
 }

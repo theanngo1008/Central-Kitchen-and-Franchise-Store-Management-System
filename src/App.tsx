@@ -26,7 +26,7 @@ import KitchenInventory from "@/pages/kitchen/KitchenInventory";
 import CoordinatorDashboard from "@/pages/coordinator/CoordinatorDashboard";
 import AggregatedOrders from "@/pages/coordinator/AggregatedOrders";
 import ProductionCoordination from "@/pages/coordinator/ProductionCoordination";
-import DeliverySchedule from "@/pages/coordinator/DeliverySchedule";
+import SupplyQueue from "@/pages/coordinator/SupplyQueue";
 import DeliveryTracking from "@/pages/coordinator/DeliveryTracking";
 import ExceptionHandling from "@/pages/coordinator/ExceptionHandling";
 // Manager Pages
@@ -112,8 +112,8 @@ const App = () => (
                 element={<ProductionCoordination />}
               />
               <Route
-                path="/coordinator/schedule"
-                element={<DeliverySchedule />}
+                path="/coordinator/supply-queue"
+                element={<SupplyQueue />}
               />
               <Route
                 path="/coordinator/tracking"

@@ -10,6 +10,7 @@ export interface Product {
     unit: string;
     status: ProductStatus;
     productType: ProductType;
+    shelfLifeDays: number;
 }
 
 export interface ProductFormData {
@@ -17,6 +18,7 @@ export interface ProductFormData {
     sku: string;
     unit: string;
     productType: ProductType;
+    shelfLifeDays: number;
 }
 
 export interface ProductListParams {

@@ -115,9 +115,9 @@ const getNavItems = (
         icon: <Factory size={20} />,
       },
       {
-        label: "Lịch giao hàng",
-        path: "/coordinator/schedule",
-        icon: <Calendar size={20} />,
+        label: "Hàng chờ xuất kho",
+        path: "/coordinator/supply-queue",
+        icon: <Package size={20} />,
       },
       {
         label: "Theo dõi giao hàng",

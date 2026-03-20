@@ -61,6 +61,7 @@ const ProductManagement: React.FC = () => {
     sku: '',
     unit: '',
     productType: 'FINISHED',
+    shelfLifeDays: 1,
   });
 
   // React Query hooks
@@ -105,6 +106,7 @@ const ProductManagement: React.FC = () => {
       sku: product.sku,
       unit: product.unit,
       productType: product.productType,
+      shelfLifeDays: product.shelfLifeDays ?? 1,
     });
     setIsViewMode(true);
     setIsDialogOpen(true);
@@ -117,6 +119,7 @@ const ProductManagement: React.FC = () => {
       sku: product.sku,
       unit: product.unit,
       productType: product.productType,
+      shelfLifeDays: product.shelfLifeDays ?? 1,
     });
     setIsViewMode(false);
     setIsDialogOpen(true);
@@ -129,6 +132,7 @@ const ProductManagement: React.FC = () => {
       sku: '',
       unit: '',
       productType: 'FINISHED',
+      shelfLifeDays: 1,
     });
     setIsViewMode(false);
     setIsDialogOpen(true);
@@ -142,8 +146,12 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!formData.name || !formData.sku || !formData.unit) {
+    if (!formData.name || !formData.sku || !formData.unit || !formData.shelfLifeDays) {
       toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
+      return;
+    }
+    if (formData.shelfLifeDays < 1) {
+      toast.error('Hạn sử dụng phải lớn hơn 0 ngày');
       return;
     }
 
@@ -390,6 +398,17 @@ const ProductManagement: React.FC = () => {
                   <SelectItem value="SEMI_FINISHED">Bán thành phẩm</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Hạn sử dụng (ngày) <span className="text-destructive">*</span></Label>
+              <Input
+                type="number"
+                min={1}
+                value={formData.shelfLifeDays}
+                onChange={(e) => setFormData(prev => ({ ...prev, shelfLifeDays: Number(e.target.value) }))}
+                disabled={isViewMode}
+                placeholder="VD: 7"
+              />
             </div>
 
             {selectedProduct && isViewMode && (

@@ -11,7 +11,7 @@ import type {
     UpdateStatusData
 } from '@/types/storeCatalog';
 
-const ENDPOINT = '/store-catalog';
+
 
 /**
  * GET /api/store-catalog
@@ -35,7 +35,7 @@ export const getStoreCatalog = async (params: StoreCatalogListParams): Promise<S
     if (params.sortDir) queryParams.append('sortDir', params.sortDir);
 
     const query = queryParams.toString();
-    return get<StoreCatalogListResponse>(`${ENDPOINT}?${query}`);
+    return get<StoreCatalogListResponse>(`/franchises/${params.franchiseId}/catalog${query ? `?${query}` : ''}`);
 };
 
 /**
@@ -46,7 +46,7 @@ export const getStoreCatalogItem = async (
     franchiseId: number,
     productId: number
 ): Promise<StoreCatalogResponse> => {
-    return get<StoreCatalogResponse>(`${ENDPOINT}/${franchiseId}/${productId}`);
+    return get<StoreCatalogResponse>(`/franchises/${franchiseId}/catalog/${productId}`);
 };
 
 /**
@@ -56,7 +56,7 @@ export const getStoreCatalogItem = async (
  * - If exists: update price and reactivate if INACTIVE
  */
 export const assignProduct = async (data: AssignProductData): Promise<StoreCatalogResponse> => {
-    return post<StoreCatalogResponse>(ENDPOINT, data);
+    return post<StoreCatalogResponse>(`/franchises/${data.franchiseId}/catalog`, data);
 };
 
 /**
@@ -68,7 +68,7 @@ export const updateCatalogPrice = async (
     productId: number,
     data: UpdatePriceData
 ): Promise<StoreCatalogResponse> => {
-    return put<StoreCatalogResponse>(`${ENDPOINT}/${franchiseId}/${productId}`, data);
+    return put<StoreCatalogResponse>(`/franchises/${franchiseId}/catalog/${productId}/price`, data);
 };
 
 /**
@@ -80,7 +80,7 @@ export const updateCatalogStatus = async (
     productId: number,
     data: UpdateStatusData
 ): Promise<StoreCatalogResponse> => {
-    return patch<StoreCatalogResponse>(`${ENDPOINT}/${franchiseId}/${productId}/status`, data);
+    return patch<StoreCatalogResponse>(`/franchises/${franchiseId}/catalog/${productId}/status`, data);
 };
 
 /**
@@ -91,5 +91,5 @@ export const removeFromCatalog = async (
     franchiseId: number,
     productId: number
 ): Promise<void> => {
-    return del<void>(`${ENDPOINT}/${franchiseId}/${productId}`);
+    return del<void>(`/franchises/${franchiseId}/catalog/${productId}`);
 };

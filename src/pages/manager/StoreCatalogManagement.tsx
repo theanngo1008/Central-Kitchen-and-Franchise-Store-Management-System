@@ -16,7 +16,9 @@ import {
   Eye,
   Package,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -38,7 +40,7 @@ import {
 
 // Shared components
 import { StatusBadge, ProductTypeBadge, Pagination, SortableHeader } from '@/components/common';
-import { CatalogViewDialog, EditPriceDialog, AddProductDialog } from '@/components/store-catalog';
+import { CatalogViewDialog, EditPriceDialog, AddProductDialog, ProductIngredients } from '@/components/store-catalog';
 import { formatDateTime, formatCurrency } from '@/utils/formatters';
 
 type SortField = 'productName' | 'sku' | 'price' | 'status' | 'updatedAt';
@@ -57,6 +59,9 @@ const StoreCatalogManagement: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // Expandable row state
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   // Dialog states
   const [selectedItem, setSelectedItem] = useState<StoreCatalog | null>(null);
@@ -167,6 +172,16 @@ const StoreCatalogManagement: React.FC = () => {
       productId: item.productId,
       data: { status: newStatus }
     });
+  };
+
+  const handleToggleRow = (productId: number) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(productId)) {
+      newExpandedRows.delete(productId);
+    } else {
+      newExpandedRows.add(productId);
+    }
+    setExpandedRows(newExpandedRows);
   };
 
   const handleOpenAddProduct = () => {
@@ -340,6 +355,7 @@ const StoreCatalogManagement: React.FC = () => {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-10"></TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort('productName')}>
                 <SortableHeader label="Sản phẩm" field="productName" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} />
               </TableHead>
@@ -362,7 +378,7 @@ const StoreCatalogManagement: React.FC = () => {
           <TableBody>
             {catalogItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                   <Store size={40} className="mx-auto mb-2 opacity-30" />
                   <p>Chưa có sản phẩm nào trong danh mục</p>
                   <Button variant="link" onClick={handleOpenAddProduct} className="mt-2">
@@ -373,9 +389,17 @@ const StoreCatalogManagement: React.FC = () => {
               </TableRow>
             ) : (
               catalogItems.map((item) => (
-                <TableRow key={`${item.franchiseId}-${item.productId}`} className={item.status === 'INACTIVE' ? 'opacity-60' : ''}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
+                <React.Fragment key={`${item.franchiseId}-${item.productId}`}>
+                  <TableRow className={item.status === 'INACTIVE' ? 'opacity-60' : ''}>
+                    <TableCell>
+                      {item.productType === 'FINISHED' ? (
+                        <Button variant="ghost" size="icon" onClick={() => handleToggleRow(item.productId)} className="h-6 w-6">
+                          <ChevronRight size={14} className={`transition-transform duration-200 ${expandedRows.has(item.productId) ? 'rotate-90' : ''}`} />
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                         <Package size={18} className="text-primary" />
                       </div>
@@ -415,6 +439,14 @@ const StoreCatalogManagement: React.FC = () => {
                     </div>
                   </TableCell>
                 </TableRow>
+                  {expandedRows.has(item.productId) && item.productType === 'FINISHED' && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="p-0 border-b">
+                        <ProductIngredients productId={item.productId} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               ))
             )}
           </TableBody>

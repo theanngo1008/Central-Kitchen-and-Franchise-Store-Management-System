@@ -8,6 +8,7 @@ import {
   useUpdateIngredient, 
   useToggleIngredientStatus 
 } from '@/hooks/ingredients';
+import { useSuppliers } from '@/hooks/suppliers/useSuppliers';
 import type { Ingredient, IngredientFormData } from '@/types/ingredient';
 import { 
   Plus, 
@@ -81,12 +82,18 @@ const IngredientManagement: React.FC = () => {
   const [formData, setFormData] = useState<IngredientFormData>({
     name: '',
     unit: '',
+    supplierId: null,
+    shelfLifeDays: 1,
+    price: 0,
     safetyStock: 0,
     wasteThreshold: 0,
   });
 
   // React Query hooks
   const { data: ingredientsResponse, isLoading, isError, refetch } = useIngredients({ pageSize: 1000 });
+  const { data: suppliersResponse } = useSuppliers({ pageSize: 1000 });
+  const suppliers = suppliersResponse?.data?.items || [];
+
   const createMutation = useCreateIngredient();
   const updateMutation = useUpdateIngredient();
   const toggleStatusMutation = useToggleIngredientStatus();
@@ -161,6 +168,9 @@ const IngredientManagement: React.FC = () => {
     setFormData({
       name: ingredient.name,
       unit: ingredient.unit,
+      supplierId: (ingredient as any).supplierId ?? null,
+      shelfLifeDays: (ingredient as any).shelfLifeDays ?? 1,
+      price: (ingredient as any).price ?? 0,
       safetyStock: ingredient.safetyStock,
       wasteThreshold: ingredient.wasteThreshold,
     });
@@ -173,6 +183,9 @@ const IngredientManagement: React.FC = () => {
     setFormData({
       name: ingredient.name,
       unit: ingredient.unit,
+      supplierId: (ingredient as any).supplierId ?? null,
+      shelfLifeDays: (ingredient as any).shelfLifeDays ?? 1,
+      price: (ingredient as any).price ?? 0,
       safetyStock: ingredient.safetyStock,
       wasteThreshold: ingredient.wasteThreshold,
     });
@@ -185,6 +198,9 @@ const IngredientManagement: React.FC = () => {
     setFormData({
       name: '',
       unit: '',
+      supplierId: null,
+      shelfLifeDays: 1,
+      price: 0,
       safetyStock: 0,
       wasteThreshold: 0,
     });
@@ -197,9 +213,12 @@ const IngredientManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
-    // Validate required fields
-    if (!formData.name.trim()) {
-      toast.error('Vui lòng nhập tên nguyên liệu');
+    if (!formData.name.trim() || !formData.unit || !formData.supplierId) {
+      toast.error('Vui lòng nhập tên, chọn đơn vị và nhà cung cấp');
+      return;
+    }
+    if (formData.shelfLifeDays < 1) {
+      toast.error('Hạn sử dụng phải lớn hơn 0 ngày');
       return;
     }
 
@@ -501,13 +520,62 @@ const IngredientManagement: React.FC = () => {
               />
             </div>
             <div>
-              <Label>Đơn vị tính</Label>
-              <Input 
-                value={formData.unit}
-                onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+              <Label>Đơn vị tính <span className="text-destructive">*</span></Label>
+              <Select 
+                value={formData.unit} 
+                onValueChange={(val) => setFormData(prev => ({ ...prev, unit: val }))}
                 disabled={isViewMode}
-                placeholder="VD: kg, L, lon"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn đơn vị" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="g">g (Gram)</SelectItem>
+                  <SelectItem value="pcs">pcs (Cái/Chiếc)</SelectItem>
+                  <SelectItem value="ml">ml (Mililit)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Nhà cung cấp <span className="text-destructive">*</span></Label>
+              <Select
+                value={formData.supplierId?.toString() ?? ''}
+                onValueChange={(val) => setFormData(prev => ({ ...prev, supplierId: Number(val) }))}
+                disabled={isViewMode}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn nhà cung cấp" />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.filter(s => s.status === 'ACTIVE').map(s => (
+                    <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Hạn sử dụng (ngày) <span className="text-destructive">*</span></Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={formData.shelfLifeDays}
+                  onChange={(e) => setFormData(prev => ({ ...prev, shelfLifeDays: Number(e.target.value) }))}
+                  disabled={isViewMode}
+                  placeholder="VD: 7"
+                />
+              </div>
+              <div>
+                <Label>Giá (VNĐ)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.price}
+                  onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+                  disabled={isViewMode}
+                  placeholder="0"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

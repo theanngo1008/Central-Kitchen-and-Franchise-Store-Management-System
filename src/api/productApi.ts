@@ -44,6 +44,7 @@ export const createProduct = async (data: {
     sku: string;
     unit: string;
     productType: string;
+    shelfLifeDays: number;
 }): Promise<number> => {
     return post<number>(ADMIN_ENDPOINT, data);
 };
@@ -53,6 +54,7 @@ export const updateProduct = async (id: number, data: {
     sku: string;
     unit: string;
     productType: string;
+    shelfLifeDays: number;
 }): Promise<void> => {
     return put<void>(`${ADMIN_ENDPOINT}/${id}`, data);
 };
