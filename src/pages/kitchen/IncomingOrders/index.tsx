@@ -27,16 +27,12 @@ import {
 const IncomingOrdersPage: React.FC = () => {
   const { user } = useAuth();
 
-  const centralKitchenId = Number(
-    localStorage.getItem("centralKitchenId") ?? 0
-  );
+  const centralKitchenId = Number(localStorage.getItem("centralKitchenId") ?? 0);
 
   const [filter, setFilter] = useState<IncomingOrdersFilter>(
     INCOMING_ORDER_DEFAULT_FILTER
   );
-  const [selectedOrder, setSelectedOrder] = useState<IncomingOrder | null>(
-    null
-  );
+  const [selectedOrder, setSelectedOrder] = useState<IncomingOrder | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const queryParams = useMemo<StoreOrderQuery>(
@@ -208,7 +204,8 @@ const IncomingOrdersPage: React.FC = () => {
           receivedAt: result.receivedAt ?? selectedOrder.receivedAt ?? null,
           receivedBy: result.receivedBy ?? selectedOrder.receivedBy ?? null,
           receiveNote: result.receiveNote ?? selectedOrder.receiveNote ?? null,
-          processingNote: result.processingNote ?? selectedOrder.processingNote ?? null,
+          processingNote:
+            result.processingNote ?? selectedOrder.processingNote ?? null,
           processingNoteUpdatedAt:
             result.processingNoteUpdatedAt ??
             selectedOrder.processingNoteUpdatedAt ??
@@ -339,12 +336,20 @@ const IncomingOrdersPage: React.FC = () => {
       <IncomingOrdersTable
         orders={orders}
         loading={isLoading}
-        lockingOrderId={lockIncomingOrderMutation.variables?.orderId ?? null}
+        lockingOrderId={
+          lockIncomingOrderMutation.isPending
+            ? lockIncomingOrderMutation.variables?.orderId ?? null
+            : null
+        }
         receivingOrderId={
-          receiveIncomingOrderMutation.variables?.orderId ?? null
+          receiveIncomingOrderMutation.isPending
+            ? receiveIncomingOrderMutation.variables?.orderId ?? null
+            : null
         }
         forwardingOrderId={
-          forwardIncomingOrderMutation.variables?.orderId ?? null
+          forwardIncomingOrderMutation.isPending
+            ? forwardIncomingOrderMutation.variables?.orderId ?? null
+            : null
         }
         onViewDetail={handleViewDetail}
         onLockOrder={handleLockOrder}

@@ -131,11 +131,11 @@ const IncomingOrdersTable: React.FC<Props> = ({
               View
             </Button>
 
-            {onLockOrder && (
+            {onLockOrder && canLock && (
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!canLock || isLocking}
+                disabled={isLocking}
                 onClick={() => onLockOrder(order)}
               >
                 <Lock size={16} className="mr-1" />
@@ -143,11 +143,11 @@ const IncomingOrdersTable: React.FC<Props> = ({
               </Button>
             )}
 
-            {onReceiveOrder && (
+            {onReceiveOrder && canReceive && (
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!canReceive || isReceiving}
+                disabled={isReceiving}
                 onClick={() => onReceiveOrder(order)}
               >
                 <Hand size={16} className="mr-1" />
@@ -155,11 +155,11 @@ const IncomingOrdersTable: React.FC<Props> = ({
               </Button>
             )}
 
-            {onForwardOrder && (
+            {onForwardOrder && canForward && (
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!canForward || isForwarding}
+                disabled={isForwarding}
                 onClick={() => onForwardOrder(order, "")}
               >
                 <Send size={16} className="mr-1" />

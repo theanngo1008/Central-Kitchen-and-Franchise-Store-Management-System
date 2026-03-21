@@ -39,7 +39,6 @@ const StoreDashboard: React.FC = () => {
     <div className="animate-fade-in">
       <PageHeader
         title="Trang chủ Cửa hàng"
-        subtitle="Chi nhánh Quận 1 - Tổng quan hoạt động"
         action={{
           label: "Tạo đơn hàng",
           icon: ShoppingCart,

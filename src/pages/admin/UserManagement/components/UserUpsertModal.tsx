@@ -29,6 +29,13 @@ import type {
   UpdateUserPayload,
   UserStatus,
 } from "@/types/admin/user.types";
+import {
+  normalizeEmail,
+  normalizeText,
+  validateUserField,
+  validateUserForm,
+  type UserFormErrors,
+} from "../validators/userForm.validator";
 
 export interface CreateUserFormPayload {
   username: string;
@@ -109,14 +116,7 @@ export const UserUpsertModal: React.FC<Props> = ({
   );
   const [workplaceId, setWorkplaceId] = useState<number | null>(null);
 
-  const [errors, setErrors] = useState<{
-    username?: string;
-    email?: string;
-    password?: string;
-    roleId?: string;
-    assignmentType?: string;
-    workplaceId?: string;
-  }>({});
+  const [errors, setErrors] = useState<UserFormErrors>({});
 
   useEffect(() => {
     if (!open) return;
@@ -222,24 +222,7 @@ export const UserUpsertModal: React.FC<Props> = ({
     setWorkplaceId(kitchenOptions[0].centralKitchenId);
   }, [open, isEdit, effectiveAssignmentType, workplaceId, kitchenOptions]);
 
-  const canSubmit = useMemo(() => {
-    if (isEdit) {
-      return !!roleId && !!status;
-    }
-
-    const baseValid =
-      username.trim().length >= 3 &&
-      email.trim().length > 0 &&
-      password.length >= 8 &&
-      !!roleId;
-
-    if (!baseValid) return false;
-    if (!showWorkplaceSection) return true;
-    if (!effectiveAssignmentType) return false;
-    if (!workplaceId) return false;
-
-    return true;
-  }, [
+  const getFormData = () => ({
     isEdit,
     username,
     email,
@@ -249,63 +232,69 @@ export const UserUpsertModal: React.FC<Props> = ({
     showWorkplaceSection,
     effectiveAssignmentType,
     workplaceId,
-  ]);
+  });
 
-  const validateForm = () => {
-    const nextErrors: {
-      username?: string;
-      email?: string;
-      password?: string;
-      roleId?: string;
-      assignmentType?: string;
-      workplaceId?: string;
-    } = {};
+  const handleFieldBlur = (field: "username" | "email" | "password") => {
+    const message = validateUserField(field, getFormData());
+    setErrors((prev) => ({
+      ...prev,
+      [field]: message,
+    }));
+  };
 
-    if (!isEdit) {
-      if (username.trim().length < 3) {
-        nextErrors.username = "Tên đăng nhập phải từ 3 ký tự trở lên";
-      }
+  const handleRoleChange = (value: number) => {
+    setRoleId(value);
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!email.trim()) {
-        nextErrors.email = "Vui lòng nhập email";
-      } else if (!emailRegex.test(email.trim())) {
-        nextErrors.email = "Email không hợp lệ";
-      }
+    const nextAssignmentType = resolveDefaultAssignmentType(value);
 
-      if (password.length < 8) {
-        nextErrors.password = "Mật khẩu phải từ 8 ký tự trở lên";
-      }
+    const nextFormData = {
+      ...getFormData(),
+      roleId: value,
+      effectiveAssignmentType: nextAssignmentType,
+      workplaceId: null,
+    };
 
-      if (!roleId) {
-        nextErrors.roleId = "Vui lòng chọn vai trò";
-      }
+    setErrors((prev) => ({
+      ...prev,
+      roleId: validateUserField("roleId", nextFormData),
+      assignmentType: validateUserField("assignmentType", nextFormData),
+      workplaceId: validateUserField("workplaceId", nextFormData),
+    }));
+  };
 
-      if (showWorkplaceSection) {
-        if (!effectiveAssignmentType) {
-          nextErrors.assignmentType = "Vui lòng chọn loại nơi làm việc";
-        }
+  const handleStatusChange = (value: UserStatus) => {
+    setStatus(value);
 
-        if (!workplaceId) {
-          nextErrors.workplaceId = "Vui lòng chọn nơi làm việc";
-        }
-      }
-    } else {
-      if (!roleId) {
-        nextErrors.roleId = "Vui lòng chọn vai trò";
-      }
+    const nextFormData = {
+      ...getFormData(),
+      status: value,
+    };
 
-      if (!status) {
-        nextErrors.roleId = "Vui lòng chọn trạng thái";
-      }
-    }
+    setErrors((prev) => ({
+      ...prev,
+      status: validateUserField("status", nextFormData),
+    }));
+  };
 
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+  const handleWorkplaceChange = (value: number) => {
+    setWorkplaceId(value);
+
+    const nextFormData = {
+      ...getFormData(),
+      workplaceId: value,
+    };
+
+    setErrors((prev) => ({
+      ...prev,
+      workplaceId: validateUserField("workplaceId", nextFormData),
+    }));
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    const nextErrors = validateUserForm(getFormData());
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) return;
 
     if (selectedUser) {
       await onUpdate(selectedUser.userId, { roleId, status });
@@ -313,8 +302,8 @@ export const UserUpsertModal: React.FC<Props> = ({
     }
 
     await onCreate({
-      username: username.trim(),
-      email: email.trim(),
+      username: normalizeText(username),
+      email: normalizeEmail(email),
       password,
       roleId,
       assignmentType: effectiveAssignmentType || undefined,
@@ -340,8 +329,11 @@ export const UserUpsertModal: React.FC<Props> = ({
                   value={username}
                   onChange={(e) => {
                     setUsername(e.target.value);
-                    setErrors((prev) => ({ ...prev, username: undefined }));
+                    if (errors.username) {
+                      setErrors((prev) => ({ ...prev, username: undefined }));
+                    }
                   }}
+                  onBlur={() => handleFieldBlur("username")}
                   placeholder="username"
                 />
                 {errors.username && (
@@ -358,8 +350,11 @@ export const UserUpsertModal: React.FC<Props> = ({
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    setErrors((prev) => ({ ...prev, email: undefined }));
+                    if (errors.email) {
+                      setErrors((prev) => ({ ...prev, email: undefined }));
+                    }
                   }}
+                  onBlur={() => handleFieldBlur("email")}
                   placeholder="email@example.com"
                 />
                 {errors.email && (
@@ -376,8 +371,11 @@ export const UserUpsertModal: React.FC<Props> = ({
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    setErrors((prev) => ({ ...prev, password: undefined }));
+                    if (errors.password) {
+                      setErrors((prev) => ({ ...prev, password: undefined }));
+                    }
                   }}
+                  onBlur={() => handleFieldBlur("password")}
                   placeholder="******"
                 />
                 {errors.password && (
@@ -415,15 +413,7 @@ export const UserUpsertModal: React.FC<Props> = ({
               <>
                 <Select
                   value={String(roleId)}
-                  onValueChange={(v) => {
-                    setRoleId(Number(v));
-                    setErrors((prev) => ({
-                      ...prev,
-                      roleId: undefined,
-                      assignmentType: undefined,
-                      workplaceId: undefined,
-                    }));
-                  }}
+                  onValueChange={(v) => handleRoleChange(Number(v))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn vai trò" />
@@ -456,6 +446,11 @@ export const UserUpsertModal: React.FC<Props> = ({
                       ? "Central Kitchen"
                       : "Franchise"}
                   </div>
+                  {errors.assignmentType && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.assignmentType}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -467,10 +462,7 @@ export const UserUpsertModal: React.FC<Props> = ({
                 </Label>
                 <Select
                   value={workplaceId ? String(workplaceId) : ""}
-                  onValueChange={(v) => {
-                    setWorkplaceId(Number(v));
-                    setErrors((prev) => ({ ...prev, workplaceId: undefined }));
-                  }}
+                  onValueChange={(v) => handleWorkplaceChange(Number(v))}
                   disabled={
                     loadingWorkplaces ||
                     !effectiveAssignmentType ||
@@ -531,7 +523,7 @@ export const UserUpsertModal: React.FC<Props> = ({
               <Label>Trạng thái</Label>
               <Select
                 value={status}
-                onValueChange={(v) => setStatus(v as UserStatus)}
+                onValueChange={(v) => handleStatusChange(v as UserStatus)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
@@ -541,6 +533,11 @@ export const UserUpsertModal: React.FC<Props> = ({
                   <SelectItem value="INACTIVE">INACTIVE</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.status && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.status}
+                </p>
+              )}
             </div>
           )}
 
@@ -555,7 +552,7 @@ export const UserUpsertModal: React.FC<Props> = ({
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={loadingWorkplaces || !canSubmit}
+              disabled={loadingWorkplaces}
             >
               {selectedUser ? "Cập nhật" : "Thêm mới"}
             </Button>

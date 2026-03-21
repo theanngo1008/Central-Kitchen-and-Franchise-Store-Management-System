@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,6 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import {
+  normalizeText,
+  validateFranchiseField,
+  validateFranchiseForm,
+  type FranchiseFormErrors,
+} from "../validators/franchiseForm.validator";
 
 import type {
   AdminFranchise,
@@ -38,19 +45,6 @@ type Props = {
 
 const STATUS_OPTIONS: FranchiseStatus[] = ["ACTIVE", "INACTIVE"];
 
-const buildOsmEmbed = (lat: number, lng: number) => {
-  const d = 0.01;
-  const left = lng - d;
-  const right = lng + d;
-  const top = lat + d;
-  const bottom = lat - d;
-
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`;
-};
-
-const buildGoogleLink = (lat: number, lng: number) =>
-  `https://www.google.com/maps?q=${lat},${lng}`;
-
 export const FranchiseUpsertModal: React.FC<Props> = ({
   open,
   onOpenChange,
@@ -68,9 +62,12 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
   const [location, setLocation] = useState("");
   const [latitude, setLatitude] = useState<number>(0);
   const [longitude, setLongitude] = useState<number>(0);
+  const [errors, setErrors] = useState<FranchiseFormErrors>({});
 
   useEffect(() => {
     if (!open) return;
+
+    setErrors({});
 
     if (selected) {
       setCentralKitchenId(selected.centralKitchenId);
@@ -95,39 +92,74 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
   useEffect(() => {
     if (!open || selected) return;
 
-    if (
-      centralKitchenId === 0 &&
-      kitchenOptions.length > 0
-    ) {
+    if (centralKitchenId === 0 && kitchenOptions.length > 0) {
       setCentralKitchenId(kitchenOptions[0].value);
     }
   }, [open, selected, kitchenOptions, centralKitchenId]);
 
-  const canSubmit = useMemo(() => {
-    return (
-      centralKitchenId > 0 &&
-      name.trim().length > 0 &&
-      address.trim().length > 0 &&
-      location.trim().length > 0 &&
-      Number.isFinite(latitude) &&
-      Number.isFinite(longitude) &&
-      latitude !== 0 &&
-      longitude !== 0
-    );
-  }, [centralKitchenId, name, address, location, latitude, longitude]);
+  const noKitchenOptions = kitchenOptions.length === 0;
+
+  const getFormData = () => ({
+    centralKitchenId,
+    name,
+    status,
+    address,
+    location,
+  });
+
+  const handleFieldBlur = (field: "name" | "address" | "location") => {
+    const message = validateFranchiseField(field, getFormData());
+    setErrors((prev) => ({
+      ...prev,
+      [field]: message,
+    }));
+  };
+
+  const handleKitchenChange = (value: number) => {
+    setCentralKitchenId(value);
+
+    const message = validateFranchiseField("centralKitchenId", {
+      ...getFormData(),
+      centralKitchenId: value,
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      centralKitchenId: message,
+    }));
+  };
+
+  const handleStatusChange = (value: FranchiseStatus) => {
+    setStatus(value);
+
+    const message = validateFranchiseField("status", {
+      ...getFormData(),
+      status: value,
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      status: message,
+    }));
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    const formData = getFormData();
+    const nextErrors = validateFranchiseForm(formData);
+
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) return;
 
     const payload: CreateFranchisePayload | UpdateFranchisePayload = {
       centralKitchenId,
-      name: name.trim(),
+      name: normalizeText(name),
       type: "STORE",
       status,
-      address: address.trim(),
-      location: location.trim(),
-      latitude,
-      longitude,
+      address: normalizeText(address),
+      location: normalizeText(location),
+      latitude: selected?.latitude ?? 0,
+      longitude: selected?.longitude ?? 0,
     };
 
     if (selected) {
@@ -137,8 +169,6 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
 
     await onCreate(payload);
   };
-
-  const noKitchenOptions = kitchenOptions.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,8 +183,10 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
           <div>
             <Label>Bếp trung tâm</Label>
             <Select
-              value={centralKitchenId > 0 ? String(centralKitchenId) : undefined}
-              onValueChange={(v) => setCentralKitchenId(Number(v))}
+              value={
+                centralKitchenId > 0 ? String(centralKitchenId) : undefined
+              }
+              onValueChange={(v) => handleKitchenChange(Number(v))}
               disabled={noKitchenOptions}
             >
               <SelectTrigger>
@@ -168,6 +200,13 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
                 ))}
               </SelectContent>
             </Select>
+
+            {errors.centralKitchenId && (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.centralKitchenId}
+              </p>
+            )}
+
             {noKitchenOptions && (
               <p className="mt-1 text-xs text-destructive">
                 Chưa có dữ liệu bếp trung tâm để gán cho cửa hàng.
@@ -184,16 +223,25 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
             <Label>Tên cửa hàng</Label>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) {
+                  setErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
+              onBlur={() => handleFieldBlur("name")}
               placeholder="VD: Franchise Store - District 1"
             />
+            {errors.name && (
+              <p className="mt-1 text-xs text-destructive">{errors.name}</p>
+            )}
           </div>
 
           <div>
             <Label>Trạng thái</Label>
             <Select
               value={status}
-              onValueChange={(v) => setStatus(v as FranchiseStatus)}
+              onValueChange={(v) => handleStatusChange(v as FranchiseStatus)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Chọn trạng thái" />
@@ -206,27 +254,50 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && (
+              <p className="mt-1 text-xs text-destructive">{errors.status}</p>
+            )}
           </div>
 
           <div>
             <Label>Địa chỉ</Label>
             <Input
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                if (errors.address) {
+                  setErrors((prev) => ({ ...prev, address: undefined }));
+                }
+              }}
+              onBlur={() => handleFieldBlur("address")}
               placeholder="123 Nguyễn Huệ, Q1, TP.HCM"
             />
+            {errors.address && (
+              <p className="mt-1 text-xs text-destructive">{errors.address}</p>
+            )}
           </div>
 
           <div>
             <Label>Khu vực</Label>
             <Input
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                if (errors.location) {
+                  setErrors((prev) => ({ ...prev, location: undefined }));
+                }
+              }}
+              onBlur={() => handleFieldBlur("location")}
               placeholder="TP.HCM"
             />
+            {errors.location && (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.location}
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Vĩ độ (latitude)</Label>
               <Input
@@ -252,32 +323,7 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
                 }
               />
             </div>
-          </div>
-
-          {latitude !== 0 && longitude !== 0 ? (
-            <div className="border rounded-xl overflow-hidden bg-muted/20">
-              <iframe
-                title="map"
-                src={buildOsmEmbed(latitude, longitude)}
-                className="w-full h-[280px]"
-              />
-              <div className="p-2 flex justify-end border-t bg-background">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    window.open(buildGoogleLink(latitude, longitude), "_blank")
-                  }
-                >
-                  Mở Google Maps
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">
-              Nhập latitude/longitude để xem vị trí trên bản đồ.
-            </div>
-          )}
+          </div> */}
 
           <div className="flex gap-3 pt-2">
             <Button
@@ -290,7 +336,7 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={!canSubmit || noKitchenOptions}
+              disabled={noKitchenOptions}
             >
               {isEdit ? "Cập nhật" : "Thêm mới"}
             </Button>

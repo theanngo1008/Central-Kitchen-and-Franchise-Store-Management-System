@@ -160,7 +160,11 @@ const FranchiseManagement: React.FC = () => {
       <PageHeader
         title="Quản lý Cửa hàng & Bếp"
         subtitle="Quản lý danh sách cửa hàng và thông tin bếp trung tâm"
-        action={{ label: "Thêm", icon: Plus, onClick: handleOpenCreate }}
+        action={
+          tab === "STORE"
+            ? { label: "Thêm", icon: Plus, onClick: handleOpenCreate }
+            : undefined
+        }
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
