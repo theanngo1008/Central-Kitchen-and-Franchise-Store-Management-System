@@ -485,12 +485,20 @@ const ProductManagement: React.FC = () => {
             </div>
             <div>
               <Label>Đơn vị tính <span className="text-destructive">*</span></Label>
-              <Input 
-                value={formData.unit}
-                onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+              <Select 
+                value={formData.unit} 
+                onValueChange={(val) => setFormData(prev => ({ ...prev, unit: val }))}
                 disabled={isViewMode}
-                placeholder="VD: ly, cốc"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn đơn vị" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ml">ml</SelectItem>
+                  <SelectItem value="pcs">pcs</SelectItem>
+                  <SelectItem value="cup">cup</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Loại sản phẩm <span className="text-destructive">*</span></Label>

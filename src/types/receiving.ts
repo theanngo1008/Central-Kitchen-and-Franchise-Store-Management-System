@@ -41,9 +41,17 @@ export interface ReceivingDetailResponse {
     items: ReceivingDetailLineResponse[];
 }
 
+export interface ConfirmReceivingLineRequest {
+    itemType: 'PRODUCT' | 'INGREDIENT';
+    itemId: number;
+    receivedQuantity: number;
+}
+
 export interface ConfirmReceivingRequest {
     note?: string;
+    items: ConfirmReceivingLineRequest[];
 }
+
 
 export interface ReceivingConfirmResponse {
     receivingId: number;

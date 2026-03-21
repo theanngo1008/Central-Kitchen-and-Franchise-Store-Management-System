@@ -30,9 +30,24 @@ const ReceivingDetailModal: React.FC<{
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    if (!deliveryId) return;
+    if (!deliveryId || !detail) return;
+    
+    // Map items to the format required by the backend
+    const items = detail.items.map(item => ({
+      itemType: item.itemType,
+      itemId: item.itemId,
+      receivedQuantity: item.deliveredQuantity // Default to all delivered items received
+    }));
+
     confirmMutation.mutate(
-      { franchiseId, deliveryId, data: { note } },
+      { 
+        franchiseId, 
+        deliveryId, 
+        data: { 
+          note,
+          items
+        } 
+      },
       { 
         onSuccess: () => {
           onClose();
@@ -41,6 +56,7 @@ const ReceivingDetailModal: React.FC<{
       }
     );
   };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
