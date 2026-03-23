@@ -32,6 +32,10 @@ const STATUS_CONFIG: Record<
     label: "Đã chuyển Supply",
     className: "bg-cyan-100 text-cyan-800",
   },
+  PENDING: {
+    label: "Chờ xác nhận",
+    className: "bg-yellow-100 text-yellow-800",
+  },
   PREPARING: {
     label: "Đang chuẩn bị",
     className: "bg-orange-100 text-orange-800",
