@@ -1,13 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Clock3,
-  Package,
-  Pencil,
-  XCircle,
-} from "lucide-react";
+import { ArrowLeft, Package, Pencil, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -26,6 +19,21 @@ import { useStoreOrderDetail } from "@/hooks/storeOrders/useStoreOrderDetail";
 import { useSubmitStoreOrder } from "@/hooks/storeOrders/useSubmitStoreOrder";
 import { useCancelStoreOrder } from "@/hooks/storeOrders/useCancelStoreOrder";
 import type { StoreOrder } from "@/types/store/storeOrder.types";
+import StoreOrderProgress from "./CreateOrder/components/StoreOrderProgress";
+
+const DELIVERY_STATUS_HELPER: Record<string, string> = {
+  FORWARDED_TO_SUPPLY: "Đơn hàng đã được chuyển sang bộ phận Supply để xử lý.",
+  PREPARING: "Đơn hàng đang được chuẩn bị tại bếp trung tâm.",
+  READY_TO_DELIVER: "Đơn hàng đã sẵn sàng và đang chờ giao đến cửa hàng.",
+  IN_TRANSIT: "Đơn hàng hiện đang trên đường giao đến cửa hàng.",
+  DELIVERED: "Đơn hàng đã giao đến cửa hàng. Vui lòng xác nhận nhận hàng.",
+  RECEIVED_BY_STORE: "Cửa hàng đã xác nhận nhận hàng thành công.",
+};
+
+const getDeliveryHelperText = (status?: string | null) => {
+  if (!status) return null;
+  return DELIVERY_STATUS_HELPER[status] ?? null;
+};
 
 const getCurrentFranchiseId = () => {
   const keys = ["franchiseId", "selectedFranchiseId", "currentFranchiseId"];
@@ -34,15 +42,6 @@ const getCurrentFranchiseId = () => {
     if (v && !Number.isNaN(Number(v))) return Number(v);
   }
   return 0;
-};
-
-type TimelineItem = {
-  key: string;
-  label: string;
-  value: string | null | undefined;
-  icon: React.ReactNode;
-  tone?: "default" | "success" | "danger";
-  note?: string | null;
 };
 
 const StoreOrderDetail: React.FC = () => {
@@ -91,59 +90,11 @@ const StoreOrderDetail: React.FC = () => {
     target?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   const canEdit = !!order && order.status === "DRAFT";
-
   const canSubmit = !!order && order.status === "DRAFT";
 
   const canCancel = useMemo(() => {
     if (!order) return false;
-
-    const isLockedByTime =
-      !!order.lockedAt && new Date(order.lockedAt) <= new Date();
-
-    return (
-      order.status !== "LOCKED" &&
-      order.status !== "CANCELLED" &&
-      !order.cancelledAt &&
-      !isLockedByTime
-    );
-  }, [order]);
-
-  const timelineItems: TimelineItem[] = useMemo(() => {
-    if (!order) return [];
-
-    const items: TimelineItem[] = [
-      {
-        key: "created",
-        label: "Tạo đơn",
-        value: order.createdAt,
-        icon: <Clock3 size={16} />,
-        tone: "default",
-      },
-      {
-        key: "submitted",
-        label: "Gửi đơn",
-        value: order.submittedAt,
-        icon: <Package size={16} />,
-        tone: "success",
-      },
-      {
-        key: "locked",
-        label: "Khóa đơn",
-        value: order.lockedAt,
-        icon: <CheckCircle2 size={16} />,
-        tone: "success",
-      },
-      {
-        key: "cancelled",
-        label: "Hủy đơn",
-        value: order.cancelledAt,
-        icon: <XCircle size={16} />,
-        tone: "danger",
-        note: order.cancelReason,
-      },
-    ];
-
-    return items.filter((item) => !!item.value);
+    return order.status === "DRAFT" || order.status === "SUBMITTED";
   }, [order]);
 
   const handleSubmitOrder = async () => {
@@ -232,10 +183,19 @@ const StoreOrderDetail: React.FC = () => {
         }}
       />
 
+      <StoreOrderProgress status={order.status} />
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-sm text-muted-foreground mb-2">Trạng thái</p>
           <StatusBadge status={order.status} />
+          {getDeliveryHelperText(order.status) ? (
+            <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+              <p className="text-sm text-blue-800">
+                {getDeliveryHelperText(order.status)}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="bg-card border rounded-xl p-4">
@@ -254,8 +214,8 @@ const StoreOrderDetail: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-8 space-y-6">
+      <div className="space-y-6">
+        
           <div className="bg-card border rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-4">Thông tin đơn hàng</h2>
 
@@ -265,18 +225,22 @@ const StoreOrderDetail: React.FC = () => {
                   <span className="text-muted-foreground">Mã đơn</span>
                   <span className="font-medium">#{order.storeOrderId}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Franchise ID</span>
                   <span>{order.franchiseId}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Ngày đặt</span>
                   <span>{formatDate(order.orderDate)}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Ngày tạo</span>
                   <span>{formatDateTime(order.createdAt)}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">
                     Cập nhật lần cuối
@@ -290,18 +254,22 @@ const StoreOrderDetail: React.FC = () => {
                   <span className="text-muted-foreground">Trạng thái</span>
                   <StatusBadge status={order.status} />
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Submitted at</span>
                   <span>{formatDateTime(order.submittedAt)}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Locked at</span>
                   <span>{formatDateTime(order.lockedAt)}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Cancelled at</span>
                   <span>{formatDateTime(order.cancelledAt)}</span>
                 </div>
+
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Lý do hủy</span>
                   <span className="text-right">
@@ -348,107 +316,6 @@ const StoreOrderDetail: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="xl:col-span-4 space-y-6">
-          <div className="bg-card border rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Theo dõi trạng thái</h2>
-
-            {timelineItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Chưa có mốc trạng thái nào ngoài trạng thái hiện tại.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {timelineItems.map((item, index) => (
-                  <div key={item.key} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={[
-                          "flex h-9 w-9 items-center justify-center rounded-full border",
-                          item.tone === "success"
-                            ? "bg-success/10 text-success border-success/20"
-                            : item.tone === "danger"
-                              ? "bg-destructive/10 text-destructive border-destructive/20"
-                              : "bg-muted text-foreground border-border",
-                        ].join(" ")}
-                      >
-                        {item.icon}
-                      </div>
-                      {index < timelineItems.length - 1 && (
-                        <div className="w-px h-8 bg-border mt-2" />
-                      )}
-                    </div>
-
-                    <div className="pt-1">
-                      <p className="font-medium">{item.label}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDateTime(item.value)}
-                      </p>
-                      {item.note ? (
-                        <p className="text-sm text-destructive mt-1">
-                          Lý do: {item.note}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-card border rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Thao tác</h2>
-
-            <div className="space-y-3">
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() =>
-                    navigate(
-                      `/stores/${resolvedStoreId}/orders/${order.storeOrderId}/edit`,
-                    )
-                  }
-                >
-                  <Pencil size={16} className="mr-2" />
-                  Chỉnh sửa đơn hàng
-                </Button>
-              )}
-
-              {canSubmit && (
-                <Button
-                  className="w-full justify-start"
-                  onClick={handleSubmitOrder}
-                  disabled={submitOrder.isPending}
-                >
-                  <Package size={16} className="mr-2" />
-                  {submitOrder.isPending ? "Đang gửi..." : "Gửi đơn hàng"}
-                </Button>
-              )}
-
-              {canCancel && (
-                <Button
-                  variant="destructive"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setCancelReason("");
-                    setCancelOpen(true);
-                  }}
-                >
-                  <XCircle size={16} className="mr-2" />
-                  Hủy đơn hàng
-                </Button>
-              )}
-
-              {!canEdit && !canSubmit && !canCancel && (
-                <p className="text-sm text-muted-foreground">
-                  Đơn hàng hiện không có thao tác khả dụng.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       <Dialog

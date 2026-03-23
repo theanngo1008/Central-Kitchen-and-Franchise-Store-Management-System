@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Clock3,
   XCircle,
+  Truck,
 } from "lucide-react";
 
 import { useStoreOrders } from "@/hooks/storeOrders/useStoreOrders";
@@ -41,6 +42,15 @@ const getCurrentFranchiseId = () => {
   }
   return 0;
 };
+
+const DELIVERY_STATUSES = [
+  "FORWARDED_TO_SUPPLY",
+  "PREPARING",
+  "READY_TO_DELIVER",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "RECEIVED_BY_STORE",
+] as const;
 
 const OrderList: React.FC = () => {
   const franchiseId = getCurrentFranchiseId();
@@ -108,11 +118,16 @@ const OrderList: React.FC = () => {
     const isLockedByTime =
       !!order.lockedAt && new Date(order.lockedAt) <= new Date();
 
+    const isInDeliveryFlow = DELIVERY_STATUSES.includes(
+      order.status as (typeof DELIVERY_STATUSES)[number],
+    );
+
     return (
       order.status !== "LOCKED" &&
       order.status !== "CANCELLED" &&
       !order.cancelledAt &&
-      !isLockedByTime
+      !isLockedByTime &&
+      !isInDeliveryFlow
     );
   };
 
@@ -201,7 +216,9 @@ const OrderList: React.FC = () => {
   const totalOrders = orders.length;
   const draftCount = orders.filter((o) => o.status === "DRAFT").length;
   const submittedCount = orders.filter((o) => o.status === "SUBMITTED").length;
-  const lockedCount = orders.filter((o) => o.status === "LOCKED").length;
+  const deliveryCount = orders.filter((o) =>
+    DELIVERY_STATUSES.includes(o.status as (typeof DELIVERY_STATUSES)[number]),
+  ).length;
   const cancelledCount = orders.filter((o) => o.status === "CANCELLED").length;
 
   const handleConfirmCancel = async () => {
@@ -264,6 +281,13 @@ const OrderList: React.FC = () => {
             <option value="DRAFT">DRAFT</option>
             <option value="SUBMITTED">SUBMITTED</option>
             <option value="LOCKED">LOCKED</option>
+            <option value="RECEIVED_BY_KITCHEN">RECEIVED_BY_KITCHEN</option>
+            <option value="FORWARDED_TO_SUPPLY">FORWARDED_TO_SUPPLY</option>
+            <option value="PREPARING">PREPARING</option>
+            <option value="READY_TO_DELIVER">READY_TO_DELIVER</option>
+            <option value="IN_TRANSIT">IN_TRANSIT</option>
+            <option value="DELIVERED">DELIVERED</option>
+            <option value="RECEIVED_BY_STORE">RECEIVED_BY_STORE</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
         </div>
@@ -296,10 +320,10 @@ const OrderList: React.FC = () => {
 
         <div className="bg-card rounded-xl border p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-muted-foreground">LOCKED</p>
-            <CheckCircle2 size={18} className="text-success" />
+            <p className="text-sm text-muted-foreground">Đang giao / chờ nhận</p>
+            <Truck size={18} className="text-primary" />
           </div>
-          <p className="text-2xl font-semibold">{lockedCount}</p>
+          <p className="text-2xl font-semibold">{deliveryCount}</p>
         </div>
 
         <div className="bg-card rounded-xl border p-4">

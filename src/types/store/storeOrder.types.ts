@@ -2,6 +2,13 @@ export type StoreOrderStatus =
   | "DRAFT"
   | "SUBMITTED"
   | "LOCKED"
+  | "RECEIVED_BY_KITCHEN"
+  | "FORWARDED_TO_SUPPLY"
+  | "PREPARING"
+  | "READY_TO_DELIVER"
+  | "IN_TRANSIT"
+  | "DELIVERED"
+  | "RECEIVED_BY_STORE"
   | "CANCELLED";
 
 export interface StoreOrderItem {
