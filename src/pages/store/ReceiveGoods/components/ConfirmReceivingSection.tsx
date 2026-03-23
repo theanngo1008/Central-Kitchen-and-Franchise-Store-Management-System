@@ -24,7 +24,9 @@ const ConfirmReceivingSection: React.FC<Props> = ({
   onConfirm,
   confirmLoading,
 }) => {
+  const isDelivered = status === "DELIVERED";
   const isAlreadyReceived = status === "RECEIVED_BY_STORE";
+  const canConfirm = isDelivered;
 
   return (
     <div className="space-y-4 border-t pt-4">
@@ -34,13 +36,18 @@ const ConfirmReceivingSection: React.FC<Props> = ({
           placeholder="VD: Đã nhận đủ hàng, tình trạng tốt..."
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
+          disabled={confirmLoading || isAlreadyReceived}
         />
 
-        {isAlreadyReceived && (
+        {isAlreadyReceived ? (
           <p className="text-sm text-muted-foreground">
             Đơn hàng này đã được cửa hàng xác nhận nhận hàng.
           </p>
-        )}
+        ) : !canConfirm ? (
+          <p className="text-sm text-amber-600">
+            Chỉ có thể xác nhận khi đơn đã được giao tới cửa hàng.
+          </p>
+        ) : null}
       </div>
 
       <div className="flex justify-end gap-3">
@@ -48,10 +55,7 @@ const ConfirmReceivingSection: React.FC<Props> = ({
           Đóng
         </Button>
 
-        <Button
-          onClick={onConfirm}
-          disabled={isAlreadyReceived || confirmLoading}
-        >
+        <Button onClick={onConfirm} disabled={!canConfirm || confirmLoading}>
           {confirmLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isAlreadyReceived ? "Đã xác nhận nhận hàng" : "Xác nhận đã nhận hàng"}
         </Button>

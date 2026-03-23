@@ -17,7 +17,7 @@ const ReceivingInfoGrid: React.FC<Props> = ({ detail }) => {
       </div>
 
       <div>
-        <p className="text-muted-foreground">Ngày giao dự kiến</p>
+        <p className="text-muted-foreground">Ngày giao kế hoạch</p>
         <p className="font-medium">{detail.planDate}</p>
       </div>
 
@@ -29,6 +29,16 @@ const ReceivingInfoGrid: React.FC<Props> = ({ detail }) => {
       <div>
         <p className="text-muted-foreground">Mã đơn liên kết</p>
         <p className="font-medium">{detail.orderCode || "Không có"}</p>
+      </div>
+
+      <div>
+        <p className="text-muted-foreground">Thời điểm giao hàng</p>
+        <p className="font-medium">{detail.deliveryDate || "Chưa có"}</p>
+      </div>
+
+      <div>
+        <p className="text-muted-foreground">Ghi chú</p>
+        <p className="font-medium">{detail.note || "Không có"}</p>
       </div>
     </div>
   );

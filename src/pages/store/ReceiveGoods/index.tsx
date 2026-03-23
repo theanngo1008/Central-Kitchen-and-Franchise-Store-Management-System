@@ -22,12 +22,10 @@ import EmptyReceivingState from "./components/EmptyReceivingState";
 
 const ReceiveGoods: React.FC = () => {
   const user = authApi.getCurrentUser();
-  const franchiseId = user?.franchiseId
-    ? Number(user.franchiseId)
-    : undefined;
+  const franchiseId = user?.franchiseId ? Number(user.franchiseId) : undefined;
 
-  const [selectedDeliveryId, setSelectedDeliveryId] = useState<number | null>(
-    null
+  const [selectedReceivingId, setSelectedReceivingId] = useState<number | null>(
+    null,
   );
   const [note, setNote] = useState("");
 
@@ -42,17 +40,17 @@ const ReceiveGoods: React.FC = () => {
     data: detail,
     isLoading: isDetailLoading,
     isError: isDetailError,
-  } = useReceivingDetail(franchiseId ?? 0, selectedDeliveryId);
+  } = useReceivingDetail(franchiseId ?? 0, selectedReceivingId);
 
   const confirmMutation = useConfirmReceiving();
 
   const handleCloseModal = () => {
-    setSelectedDeliveryId(null);
+    setSelectedReceivingId(null);
     setNote("");
   };
 
   const handleConfirm = () => {
-    if (!selectedDeliveryId || !detail || !franchiseId) return;
+    if (!selectedReceivingId || !detail || !franchiseId) return;
 
     const items: ConfirmReceivingItemPayload[] = detail.items.map((item) => ({
       itemType: item.itemType,
@@ -68,18 +66,14 @@ const ReceiveGoods: React.FC = () => {
     confirmMutation.mutate(
       {
         franchiseId,
-        deliveryId: selectedDeliveryId,
+        deliveryId: selectedReceivingId,
         data: payload,
       },
       {
         onSuccess: () => {
-          /**
-           * CLOSE MODAL FIRST
-           * Prevent detail refetch flash
-           */
           handleCloseModal();
         },
-      }
+      },
     );
   };
 
@@ -122,14 +116,14 @@ const ReceiveGoods: React.FC = () => {
             <ReceivingCard
               key={receiving.receivingId}
               receiving={receiving}
-              onOpen={() => setSelectedDeliveryId(receiving.receivingId)}
+              onOpen={() => setSelectedReceivingId(receiving.receivingId)}
             />
           ))}
         </div>
       )}
 
       <ReceivingDetailModal
-        open={!!selectedDeliveryId}
+        open={!!selectedReceivingId}
         onClose={handleCloseModal}
         detail={detail}
         isLoading={isDetailLoading}

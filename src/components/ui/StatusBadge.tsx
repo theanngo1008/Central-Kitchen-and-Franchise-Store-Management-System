@@ -32,10 +32,6 @@ const STATUS_CONFIG: Record<
     label: "Đã chuyển Supply",
     className: "bg-cyan-100 text-cyan-800",
   },
-  PENDING: {
-    label: "Chờ xác nhận",
-    className: "bg-yellow-100 text-yellow-800",
-  },
   PREPARING: {
     label: "Đang chuẩn bị",
     className: "bg-orange-100 text-orange-800",
@@ -68,7 +64,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 }) => {
   if (!status) {
     return (
-      <span className={`bg-gray-100 text-gray-800 px-2 py-1 rounded ${className}`}>
+      <span className={`rounded bg-gray-100 px-2 py-1 text-gray-800 ${className}`}>
         --
       </span>
     );
@@ -81,7 +77,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className} ${className}`}
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${config.className} ${className}`}
     >
       {config.label}
     </span>

@@ -17,7 +17,9 @@ const ReceivingItemsTable: React.FC<Props> = ({ items }) => {
             <tr>
               <th className="px-4 py-2 text-left font-medium">Tên mặt hàng</th>
               <th className="px-4 py-2 text-left font-medium">Phân loại</th>
-              <th className="px-4 py-2 text-center font-medium">Số lượng giao</th>
+              <th className="px-4 py-2 text-center font-medium">SL dự kiến</th>
+              <th className="px-4 py-2 text-center font-medium">SL giao</th>
+              <th className="px-4 py-2 text-center font-medium">SL nhận</th>
             </tr>
           </thead>
 
@@ -32,7 +34,15 @@ const ReceivingItemsTable: React.FC<Props> = ({ items }) => {
                   {item.itemType === "PRODUCT" ? "Thành phẩm" : "Nguyên liệu"}
                 </td>
                 <td className="px-4 py-3 text-center">
+                  {item.expectedQuantity ?? "-"}{" "}
+                  <span className="text-muted-foreground">{item.unit}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
                   {item.deliveredQuantity}{" "}
+                  <span className="text-muted-foreground">{item.unit}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {item.receivedQuantity ?? "-"}{" "}
                   <span className="text-muted-foreground">{item.unit}</span>
                 </td>
               </tr>

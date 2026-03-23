@@ -1,5 +1,4 @@
 export type ReceivingStatus =
-  | "PENDING"
   | "PREPARING"
   | "READY_TO_DELIVER"
   | "IN_TRANSIT"
@@ -12,28 +11,44 @@ export interface PendingReceivingItem {
   receivingId: number;
   deliveryCode: string;
   orderCode?: string | null;
+  franchiseId?: number;
+  centralKitchenId?: number;
+  centralKitchenName: string;
+  planDate: string;
+  deliveryDate?: string | null;
+  createdAt?: string;
   status: ReceivingStatus | string;
+  canConfirm?: boolean;
   totalItems: number;
   totalQuantity: number;
-  planDate: string;
-  centralKitchenName: string;
+  storeOrderId?: number;
 }
 
 export interface ReceivingDetailItem {
   itemId: number;
   itemName: string;
   itemType: ReceivingItemType | string;
-  deliveredQuantity: number;
   unit: string;
+  expectedQuantity?: number;
+  deliveredQuantity: number;
+  receivedQuantity?: number;
 }
 
 export interface ReceivingDetail {
   receivingId: number;
   deliveryCode: string;
   orderCode?: string | null;
-  status: ReceivingStatus | string;
-  planDate: string;
+  storeOrderId?: number;
+  franchiseId?: number;
+  franchiseName?: string;
+  centralKitchenId?: number;
   centralKitchenName: string;
+  planDate: string;
+  deliveryDate?: string | null;
+  createdAt?: string;
+  status: ReceivingStatus | string;
+  canConfirm?: boolean;
+  note?: string | null;
   items: ReceivingDetailItem[];
 }
 
