@@ -14,6 +14,8 @@ import {
   getOrderDisplayCode,
   getOrderItemCount,
   getOrderTotalQuantity,
+  hasIncomingOrderInventoryCheckData,
+  hasSufficientCentralKitchenStock,
 } from "../helpers";
 
 type Props = {
@@ -53,69 +55,77 @@ const IncomingOrdersTable: React.FC<Props> = ({
   const columns = [
     {
       key: "storeOrderId",
-      label: "Order Code",
+      label: "Mã đơn",
       render: (order: IncomingOrderRow) => (
         <span className="font-medium">{getOrderDisplayCode(order)}</span>
       ),
     },
     {
       key: "franchiseName",
-      label: "Store",
+      label: "Cửa hàng",
       render: (order: IncomingOrderRow) => order.franchiseName,
     },
     {
       key: "orderDate",
-      label: "Order Date",
+      label: "Ngày đặt",
       render: (order: IncomingOrderRow) => formatDate(order.orderDate),
     },
     {
       key: "status",
-      label: "Status",
+      label: "Trạng thái",
       render: (order: IncomingOrderRow) => (
         <StatusBadge status={order.status} />
       ),
     },
     {
       key: "itemCount",
-      label: "Items",
+      label: "Số mặt hàng",
       render: (order: IncomingOrderRow) => getOrderItemCount(order),
     },
     {
       key: "totalQuantity",
-      label: "Total Qty",
+      label: "Tổng số lượng",
       render: (order: IncomingOrderRow) => getOrderTotalQuantity(order),
     },
     {
       key: "submittedAt",
-      label: "Submitted At",
+      label: "Thời gian gửi",
       render: (order: IncomingOrderRow) => formatDateTime(order.submittedAt),
     },
     {
       key: "lockedAt",
-      label: "Locked At",
+      label: "Thời gian khóa",
       render: (order: IncomingOrderRow) => formatDateTime(order.lockedAt),
     },
     {
       key: "receivedAt",
-      label: "Received At",
+      label: "Thời gian tiếp nhận",
       render: (order: IncomingOrderRow) => formatDateTime(order.receivedAt),
     },
     {
       key: "createdAt",
-      label: "Created At",
+      label: "Thời gian tạo",
       render: (order: IncomingOrderRow) => formatDateTime(order.createdAt),
     },
     {
       key: "actions",
-      label: "Actions",
+      label: "Thao tác",
       render: (order: IncomingOrderRow) => {
         const canReceive = canProcessIncomingOrder(order);
         const canForward = canForwardIncomingOrder(order);
+
+        const hasInventoryData = hasIncomingOrderInventoryCheckData(order);
+        const hasEnoughStock = hasSufficientCentralKitchenStock(order);
 
         const isLocking = lockingOrderId === order.storeOrderId;
         const isReceiving = receivingOrderId === order.storeOrderId;
         const isForwarding = forwardingOrderId === order.storeOrderId;
         const isReceiveFlowLoading = isLocking || isReceiving;
+
+        const disableForwardButton =
+          isForwarding ||
+          isReceiveFlowLoading ||
+          (hasInventoryData && !hasEnoughStock);
 
         return (
           <div className="flex items-center gap-2">
@@ -125,7 +135,7 @@ const IncomingOrdersTable: React.FC<Props> = ({
               onClick={() => onViewDetail(order)}
             >
               <Eye size={16} className="mr-1" />
-              View
+              Xem
             </Button>
 
             {onReceiveOrder && canReceive && (
@@ -136,7 +146,7 @@ const IncomingOrdersTable: React.FC<Props> = ({
                 onClick={() => onReceiveOrder(order)}
               >
                 <Hand size={16} className="mr-1" />
-                {isReceiveFlowLoading ? "Receiving..." : "Receive"}
+                {isReceiveFlowLoading ? "Đang tiếp nhận..." : "Tiếp nhận"}
               </Button>
             )}
 
@@ -144,11 +154,11 @@ const IncomingOrdersTable: React.FC<Props> = ({
               <Button
                 size="sm"
                 variant="outline"
-                disabled={isForwarding || isReceiveFlowLoading}
+                disabled={disableForwardButton}
                 onClick={() => onForwardOrder(order, "")}
               >
                 <Send size={16} className="mr-1" />
-                {isForwarding ? "Forwarding..." : "Forward"}
+                {isForwarding ? "Đang chuyển..." : "Chuyển Cung ứng"}
               </Button>
             )}
           </div>
@@ -160,7 +170,7 @@ const IncomingOrdersTable: React.FC<Props> = ({
   if (loading) {
     return (
       <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
-        Loading incoming orders...
+        Đang tải danh sách đơn hàng...
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import type {
   IncomingOrder,
+  IncomingOrderItem,
   IncomingOrderStatus,
 } from "@/types/kitchen/incomingOrder.types";
 
@@ -11,17 +12,17 @@ export const INCOMING_ORDER_FILTER_OPTIONS: Array<{
   label: string;
   value: IncomingOrdersFilter;
 }> = [
-  { label: "All", value: "ALL" },
-  { label: "Submitted", value: "SUBMITTED" },
-  { label: "Received by Kitchen", value: "RECEIVED_BY_KITCHEN" },
-  { label: "Forwarded to Supply", value: "FORWARDED_TO_SUPPLY" },
-  { label: "Preparing", value: "PREPARING" },
-  { label: "Ready to Deliver", value: "READY_TO_DELIVER" },
-  { label: "In Transit", value: "IN_TRANSIT" },
-  { label: "Delivered", value: "DELIVERED" },
-  { label: "Received by Store", value: "RECEIVED_BY_STORE" },
-  { label: "Cancelled", value: "CANCELLED" },
-  { label: "Draft", value: "DRAFT" },
+  { label: "Tất cả", value: "ALL" },
+  { label: "Đã gửi", value: "SUBMITTED" },
+  { label: "Bếp đã tiếp nhận", value: "RECEIVED_BY_KITCHEN" },
+  { label: "Đã chuyển Cung ứng", value: "FORWARDED_TO_SUPPLY" },
+  { label: "Đang chuẩn bị", value: "PREPARING" },
+  { label: "Sẵn sàng giao", value: "READY_TO_DELIVER" },
+  { label: "Đang giao", value: "IN_TRANSIT" },
+  { label: "Đã giao", value: "DELIVERED" },
+  { label: "Cửa hàng đã nhận", value: "RECEIVED_BY_STORE" },
+  { label: "Đã hủy", value: "CANCELLED" },
+  { label: "Nháp", value: "DRAFT" },
 ];
 
 export const getIncomingOrders = (
@@ -55,8 +56,55 @@ export const canProcessIncomingOrder = (order: IncomingOrder): boolean => {
   return order.status === "SUBMITTED";
 };
 
-export const canForwardIncomingOrder = (order: IncomingOrder): boolean => {
+export const canForwardIncomingOrderStatus = (order: IncomingOrder): boolean => {
   return order.status === "RECEIVED_BY_KITCHEN";
+};
+
+export const hasIncomingOrderInventoryCheckData = (
+  order: IncomingOrder,
+): boolean => {
+  if (!order.items?.length) return false;
+
+  return order.items.some(
+    (item) =>
+      typeof item.isSufficientInCentralKitchen === "boolean" ||
+      typeof item.availableInCentralKitchenQuantity === "number",
+  );
+};
+
+export const isIncomingOrderItemSufficient = (
+  item: IncomingOrderItem,
+): boolean => {
+  if (typeof item.isSufficientInCentralKitchen === "boolean") {
+    return item.isSufficientInCentralKitchen;
+  }
+
+  if (typeof item.availableInCentralKitchenQuantity === "number") {
+    return item.availableInCentralKitchenQuantity >= (item.quantity || 0);
+  }
+
+  return true;
+};
+
+export const hasSufficientCentralKitchenStock = (
+  order: IncomingOrder,
+): boolean => {
+  if (!order.items?.length) return true;
+  if (!hasIncomingOrderInventoryCheckData(order)) return true;
+
+  return order.items.every(isIncomingOrderItemSufficient);
+};
+
+export const getInsufficientStockItems = (
+  order: IncomingOrder,
+): IncomingOrderItem[] => {
+  if (!order.items?.length) return [];
+
+  return order.items.filter((item) => !isIncomingOrderItemSufficient(item));
+};
+
+export const canForwardIncomingOrder = (order: IncomingOrder): boolean => {
+  return canForwardIncomingOrderStatus(order);
 };
 
 export const hasOrderBeenSubmitted = (order: IncomingOrder): boolean => {
@@ -117,37 +165,37 @@ export const getOrderTimeline = (order: IncomingOrder) => {
   return [
     {
       key: "created",
-      label: "Created",
+      label: "Tạo đơn",
       value: order.createdAt,
       visible: !!order.createdAt,
     },
     {
       key: "submitted",
-      label: "Submitted",
+      label: "Đã gửi đơn",
       value: order.submittedAt ?? null,
       visible: !!order.submittedAt,
     },
     {
       key: "locked",
-      label: "Locked",
+      label: "Đã khóa",
       value: order.lockedAt ?? null,
       visible: !!order.lockedAt || order.status === "LOCKED",
     },
     {
       key: "receivedByKitchen",
-      label: "Received by Kitchen",
+      label: "Bếp đã tiếp nhận",
       value: order.receivedAt ?? null,
       visible: !!order.receivedAt || order.status === "RECEIVED_BY_KITCHEN",
     },
     {
       key: "forwardedToSupply",
-      label: "Forwarded to Supply",
+      label: "Đã chuyển Cung ứng",
       value: order.forwardedAt ?? null,
       visible: !!order.forwardedAt || order.status === "FORWARDED_TO_SUPPLY",
     },
     {
       key: "cancelled",
-      label: "Cancelled",
+      label: "Đã hủy",
       value: order.cancelledAt ?? null,
       visible: !!order.cancelledAt || order.status === "CANCELLED",
     },

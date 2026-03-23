@@ -11,11 +11,26 @@ export type IncomingOrderStatus =
   | "RECEIVED_BY_STORE"
   | "CANCELLED";
 
+export interface IncomingOrderAvailableBatch {
+  batchId: number;
+  batchCode: string;
+  quantity: number;
+  createdAt?: string | null;
+  expiredAt?: string | null;
+}
+
 export interface IncomingOrderItem {
   productId: number;
   productName: string;
   unit: string;
   quantity: number;
+
+  sku?: string | null;
+  productStatus?: string | null;
+
+  availableInCentralKitchenQuantity?: number | null;
+  isSufficientInCentralKitchen?: boolean | null;
+  availableCentralKitchenBatches?: IncomingOrderAvailableBatch[] | null;
 }
 
 export interface IncomingOrder {
