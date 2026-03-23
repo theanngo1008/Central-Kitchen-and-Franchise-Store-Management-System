@@ -15,6 +15,7 @@ import type {
   ProductAdjustmentResult,
   ProductBatch,
   ProductBatchListParams,
+  UpdateBatchCodePayload,
 } from "@/types/kitchen/inventoryBatch.types";
 
 const buildQueryString = (params?: Record<string, unknown>) => {
@@ -76,6 +77,26 @@ export const inventoryApi = {
     ).data;
   },
 
+  getIngredientBatchDetail: async (
+    centralKitchenId: number,
+    batchId: number,
+  ) =>
+    (
+      await adminApi.get<ApiResponse<IngredientBatch>>(
+        `/central-kitchens/${centralKitchenId}/inventory/ingredients/batches/${batchId}`,
+      )
+    ).data,
+
+  getProductBatchDetail: async (
+    centralKitchenId: number,
+    batchId: number,
+  ) =>
+    (
+      await adminApi.get<ApiResponse<ProductBatch>>(
+        `/central-kitchens/${centralKitchenId}/inventory/products/batches/${batchId}`,
+      )
+    ).data,
+
   createIngredientInboundBatch: async (
     centralKitchenId: number,
     payload: CreateIngredientInboundPayload,
@@ -116,6 +137,30 @@ export const inventoryApi = {
     (
       await adminApi.post<ApiResponse<ProductAdjustmentResult>>(
         `/central-kitchens/${centralKitchenId}/inventory/products/adjustment`,
+        payload,
+      )
+    ).data,
+
+  renameIngredientBatchCode: async (
+    centralKitchenId: number,
+    batchId: number,
+    payload: UpdateBatchCodePayload,
+  ) =>
+    (
+      await adminApi.put<ApiResponse<IngredientBatch>>(
+        `/central-kitchens/${centralKitchenId}/inventory/ingredients/batches/${batchId}/batch-code`,
+        payload,
+      )
+    ).data,
+
+  renameProductBatchCode: async (
+    centralKitchenId: number,
+    batchId: number,
+    payload: UpdateBatchCodePayload,
+  ) =>
+    (
+      await adminApi.put<ApiResponse<ProductBatch>>(
+        `/central-kitchens/${centralKitchenId}/inventory/products/batches/${batchId}/batch-code`,
         payload,
       )
     ).data,

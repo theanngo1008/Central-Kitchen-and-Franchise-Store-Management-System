@@ -51,33 +51,45 @@ const AdjustBatchModal: React.FC<Props> = ({
   onClose,
   onSubmit,
 }) => {
-  const [type, setType] = useState<InventoryAdjustmentType>("INCREASE");
+  const [type, setType] = useState<InventoryAdjustmentType>("ADJUST");
   const [deltaQuantity, setDeltaQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [reference, setReference] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    setType("INCREASE");
+
+    setType("ADJUST");
     setDeltaQuantity("");
     setReason("");
     setReference("");
   }, [open, batch?.batchId]);
 
   const quantityNumber = useMemo(() => Number(deltaQuantity), [deltaQuantity]);
+
   const isInvalidQuantity =
-    !deltaQuantity.trim() || Number.isNaN(quantityNumber) || quantityNumber <= 0;
+    !deltaQuantity.trim() ||
+    Number.isNaN(quantityNumber) ||
+    quantityNumber <= 0 ||
+    !Number.isInteger(quantityNumber);
+
+  const isWasteOverQuantity =
+    !!batch && type === "WASTE" && quantityNumber > batch.quantity;
 
   const isSubmitDisabled =
-    !batch || !reason.trim() || isInvalidQuantity || submitting;
+    !batch ||
+    !reason.trim() ||
+    isInvalidQuantity ||
+    isWasteOverQuantity ||
+    submitting;
 
   const handleSubmit = async () => {
     if (!batch || isSubmitDisabled) return;
 
     await onSubmit({
-      batchId: batch.batchId,
+      batchId: Number(batch.batchId),
       type,
-      deltaQuantity: quantityNumber,
+      deltaQuantity: Number(quantityNumber),
       reason: reason.trim(),
       reference: reference.trim() || undefined,
     });
@@ -101,13 +113,15 @@ const AdjustBatchModal: React.FC<Props> = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Loại điều chỉnh</Label>
+              <Label>Loại nghiệp vụ</Label>
               <Select
                 value={type}
-                onValueChange={(value) => setType(value as InventoryAdjustmentType)}
+                onValueChange={(value) =>
+                  setType(value as InventoryAdjustmentType)
+                }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn loại điều chỉnh" />
+                  <SelectValue placeholder="Chọn loại nghiệp vụ" />
                 </SelectTrigger>
                 <SelectContent>
                   {INVENTORY_ADJUSTMENT_TYPE_OPTIONS.map((option) => (
@@ -124,11 +138,16 @@ const AdjustBatchModal: React.FC<Props> = ({
               <Input
                 type="number"
                 min={1}
-                step="any"
+                step={1}
                 value={deltaQuantity}
                 onChange={(e) => setDeltaQuantity(e.target.value)}
                 placeholder="Nhập số lượng"
               />
+              {isWasteOverQuantity ? (
+                <p className="text-sm text-destructive">
+                  Số lượng hao hụt không được vượt quá tồn hiện tại.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">

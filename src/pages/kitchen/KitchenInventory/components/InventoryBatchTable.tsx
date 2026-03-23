@@ -1,5 +1,11 @@
 import React, { useMemo } from "react";
-import { AlertTriangle, PencilLine, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Eye,
+  PencilLine,
+  RefreshCcw,
+  Trash2,
+} from "lucide-react";
 
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/button";
@@ -27,6 +33,9 @@ type Props = {
   loading?: boolean;
   adjustingBatchId?: number | null;
   deletingBatchId?: number | null;
+  renamingBatchId?: number | null;
+  onViewDetail: (batch: BatchRow) => void;
+  onRename: (batch: BatchRow) => void;
   onAdjust: (batch: BatchRow) => void;
   onDelete: (batch: BatchRow) => void;
 };
@@ -36,6 +45,9 @@ const InventoryBatchTable: React.FC<Props> = ({
   loading = false,
   adjustingBatchId,
   deletingBatchId,
+  renamingBatchId,
+  onViewDetail,
+  onRename,
   onAdjust,
   onDelete,
 }) => {
@@ -99,15 +111,37 @@ const InventoryBatchTable: React.FC<Props> = ({
       render: (item: TableRow) => {
         const isAdjusting = adjustingBatchId === item.batchId;
         const isDeleting = deletingBatchId === item.batchId;
+        const isRenaming = renamingBatchId === item.batchId;
         const deleteDisabled = !canDeleteBatch(item.quantity) || isDeleting;
+        const busy = isAdjusting || isDeleting || isRenaming;
 
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onViewDetail(item)}
+              disabled={busy}
+            >
+              <Eye size={16} className="mr-1" />
+              Chi tiết
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRename(item)}
+              disabled={busy}
+            >
+              <RefreshCcw size={16} className="mr-1" />
+              {isRenaming ? "Đang lưu..." : "Đổi mã lô"}
+            </Button>
+
             <Button
               size="sm"
               variant="outline"
               onClick={() => onAdjust(item)}
-              disabled={isAdjusting || isDeleting}
+              disabled={busy}
             >
               <PencilLine size={16} className="mr-1" />
               {isAdjusting ? "Đang xử lý..." : "Điều chỉnh"}
@@ -117,7 +151,7 @@ const InventoryBatchTable: React.FC<Props> = ({
               size="sm"
               variant="outline"
               onClick={() => onDelete(item)}
-              disabled={deleteDisabled}
+              disabled={deleteDisabled || isRenaming}
               title={
                 deleteDisabled && item.quantity > 0
                   ? "Chỉ được xóa khi số lượng bằng 0"

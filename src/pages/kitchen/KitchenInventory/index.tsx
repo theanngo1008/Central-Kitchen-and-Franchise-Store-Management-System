@@ -6,6 +6,7 @@ import { authApi } from "@/api";
 
 import type {
   IngredientBatch,
+  InventoryAdjustmentType,
   ProductBatch,
   KitchenInventoryTab,
 } from "@/types/kitchen/inventoryBatch.types";
@@ -17,16 +18,17 @@ import {
   useCreateProductInboundBatch,
   useDeleteIngredientBatch,
   useDeleteProductBatch,
+  useIngredientBatchDetail,
   useIngredientBatches,
   useIngredientOptions,
+  useProductBatchDetail,
   useProductBatches,
   useProductOptions,
+  useRenameIngredientBatchCode,
+  useRenameProductBatchCode,
 } from "@/hooks/kitchen/useKitchenInventory";
 
-import {
-  filterInventoryBatches,
-  getInventorySummary,
-} from "./helpers";
+import { filterInventoryBatches, getInventorySummary } from "./helpers";
 
 import InventoryToolbar from "./components/InventoryToolbar";
 import InventoryTabs from "./components/InventoryTabs";
@@ -36,6 +38,8 @@ import EmptyInventoryState from "./components/EmptyInventoryState";
 import CreateInboundBatchModal from "./components/CreateInboundBatchModal";
 import AdjustBatchModal from "./components/AdjustBatchModal";
 import DeleteBatchConfirmDialog from "./components/DeleteBatchConfirmDialog";
+import BatchDetailDialog from "./components/BatchDetailDialog";
+import RenameBatchCodeModal from "./components/RenameBatchCodeModal";
 
 type BatchRow = IngredientBatch | ProductBatch;
 
@@ -51,6 +55,8 @@ const KitchenInventory: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
 
   const [selectedBatch, setSelectedBatch] = useState<BatchRow | null>(null);
 
@@ -70,6 +76,9 @@ const KitchenInventory: React.FC = () => {
 
   const adjustIngredientBatch = useAdjustIngredientBatch();
   const adjustProductBatch = useAdjustProductBatch();
+
+  const renameIngredientBatchCode = useRenameIngredientBatchCode();
+  const renameProductBatchCode = useRenameProductBatchCode();
 
   const deleteIngredientBatch = useDeleteIngredientBatch();
   const deleteProductBatch = useDeleteProductBatch();
@@ -100,6 +109,30 @@ const KitchenInventory: React.FC = () => {
     return ids.size;
   }, [filteredData]);
 
+  const ingredientBatchDetailQuery = useIngredientBatchDetail(
+    centralKitchenId,
+    detailOpen && selectedBatch && "ingredientId" in selectedBatch
+      ? selectedBatch.batchId
+      : null,
+  );
+
+  const productBatchDetailQuery = useProductBatchDetail(
+    centralKitchenId,
+    detailOpen && selectedBatch && "productId" in selectedBatch
+      ? selectedBatch.batchId
+      : null,
+  );
+
+  const detailBatch =
+    selectedBatch && "ingredientId" in selectedBatch
+      ? (ingredientBatchDetailQuery.data ?? selectedBatch)
+      : selectedBatch && "productId" in selectedBatch
+        ? (productBatchDetailQuery.data ?? selectedBatch)
+        : null;
+
+  const detailLoading =
+    ingredientBatchDetailQuery.isLoading || productBatchDetailQuery.isLoading;
+
   const loading =
     !centralKitchenId ||
     ingredientBatchesQuery.isLoading ||
@@ -123,6 +156,16 @@ const KitchenInventory: React.FC = () => {
   const handleOpenDelete = (batch: BatchRow) => {
     setSelectedBatch(batch);
     setDeleteOpen(true);
+  };
+
+  const handleOpenDetail = (batch: BatchRow) => {
+    setSelectedBatch(batch);
+    setDetailOpen(true);
+  };
+
+  const handleOpenRename = (batch: BatchRow) => {
+    setSelectedBatch(batch);
+    setRenameOpen(true);
   };
 
   const handleCreateInbound = async (payload: {
@@ -176,7 +219,7 @@ const KitchenInventory: React.FC = () => {
 
   const handleAdjustBatch = async (payload: {
     batchId: number;
-    type: "INCREASE" | "DECREASE";
+    type: InventoryAdjustmentType;
     deltaQuantity: number;
     reason: string;
     reference?: string;
@@ -187,20 +230,23 @@ const KitchenInventory: React.FC = () => {
     }
 
     try {
-      if (isIngredientTab) {
+      if (selectedBatch && "ingredientId" in selectedBatch) {
         const res = await adjustIngredientBatch.mutateAsync({
           centralKitchenId,
           payload,
         });
 
         toast.success(res.message || "Điều chỉnh lô nguyên liệu thành công.");
-      } else {
+      } else if (selectedBatch && "productId" in selectedBatch) {
         const res = await adjustProductBatch.mutateAsync({
           centralKitchenId,
           payload,
         });
 
         toast.success(res.message || "Điều chỉnh lô sản phẩm thành công.");
+      } else {
+        toast.error("Không xác định được lô cần điều chỉnh.");
+        return;
       }
 
       setAdjustOpen(false);
@@ -208,6 +254,43 @@ const KitchenInventory: React.FC = () => {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Điều chỉnh lô hàng thất bại.";
+      toast.error(message);
+    }
+  };
+
+  const handleRenameBatchCode = async (payload: {
+    batchCode: string;
+    reason?: string;
+  }) => {
+    if (!centralKitchenId || !selectedBatch) {
+      toast.error("Không xác định được lô cần đổi mã.");
+      return;
+    }
+
+    try {
+      if ("ingredientId" in selectedBatch) {
+        const res = await renameIngredientBatchCode.mutateAsync({
+          centralKitchenId,
+          batchId: selectedBatch.batchId,
+          payload,
+        });
+
+        toast.success(res.message || "Đổi mã lô nguyên liệu thành công.");
+      } else {
+        const res = await renameProductBatchCode.mutateAsync({
+          centralKitchenId,
+          batchId: selectedBatch.batchId,
+          payload,
+        });
+
+        toast.success(res.message || "Đổi mã lô sản phẩm thành công.");
+      }
+
+      setRenameOpen(false);
+      setSelectedBatch(null);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Đổi mã lô thất bại.";
       toast.error(message);
     }
   };
@@ -290,6 +373,13 @@ const KitchenInventory: React.FC = () => {
                 deleteProductBatch.variables?.batchId ??
                 null
               }
+              renamingBatchId={
+                renameIngredientBatchCode.variables?.batchId ??
+                renameProductBatchCode.variables?.batchId ??
+                null
+              }
+              onViewDetail={handleOpenDetail}
+              onRename={handleOpenRename}
               onAdjust={handleOpenAdjust}
               onDelete={handleOpenDelete}
             />
@@ -316,6 +406,13 @@ const KitchenInventory: React.FC = () => {
                 deleteProductBatch.variables?.batchId ??
                 null
               }
+              renamingBatchId={
+                renameIngredientBatchCode.variables?.batchId ??
+                renameProductBatchCode.variables?.batchId ??
+                null
+              }
+              onViewDetail={handleOpenDetail}
+              onRename={handleOpenRename}
               onAdjust={handleOpenAdjust}
               onDelete={handleOpenDelete}
             />
@@ -330,6 +427,9 @@ const KitchenInventory: React.FC = () => {
         productOptions={productOptionsQuery.options}
         loadingOptions={
           ingredientOptionsQuery.isLoading || productOptionsQuery.isLoading
+        }
+        optionsError={
+          ingredientOptionsQuery.isError || productOptionsQuery.isError
         }
         submitting={
           createIngredientInbound.isPending || createProductInbound.isPending
@@ -358,6 +458,29 @@ const KitchenInventory: React.FC = () => {
           setSelectedBatch(null);
         }}
         onConfirm={handleDeleteBatch}
+      />
+
+      <BatchDetailDialog
+        open={detailOpen}
+        loading={detailLoading}
+        batch={detailBatch}
+        onClose={() => {
+          setDetailOpen(false);
+          setSelectedBatch(null);
+        }}
+      />
+
+      <RenameBatchCodeModal
+        open={renameOpen}
+        batch={selectedBatch}
+        submitting={
+          renameIngredientBatchCode.isPending || renameProductBatchCode.isPending
+        }
+        onClose={() => {
+          setRenameOpen(false);
+          setSelectedBatch(null);
+        }}
+        onSubmit={handleRenameBatchCode}
       />
     </div>
   );

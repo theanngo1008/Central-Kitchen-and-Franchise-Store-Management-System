@@ -1,6 +1,6 @@
 export type KitchenInventoryTab = "INGREDIENT" | "PRODUCT";
 
-export type InventoryAdjustmentType = "INCREASE" | "DECREASE";
+export type InventoryAdjustmentType = "ADJUST" | "WASTE";
 
 export interface IngredientBatch {
   batchId: number;
@@ -66,6 +66,11 @@ export interface AdjustProductBatchPayload {
   deltaQuantity: number;
   reason: string;
   reference?: string;
+}
+
+export interface UpdateBatchCodePayload {
+  batchCode: string;
+  reason?: string;
 }
 
 export interface IngredientAdjustmentResult {

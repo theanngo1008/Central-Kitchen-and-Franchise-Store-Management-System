@@ -19,8 +19,8 @@ export const INVENTORY_ADJUSTMENT_TYPE_OPTIONS: Array<{
   label: string;
   value: InventoryAdjustmentType;
 }> = [
-  { label: "Tăng tồn kho", value: "INCREASE" },
-  { label: "Giảm tồn kho", value: "DECREASE" },
+  { label: "Điều chỉnh tồn kho", value: "ADJUST" },
+  { label: "Hao hụt / hủy", value: "WASTE" },
 ];
 
 export const isIngredientBatch = (
@@ -77,7 +77,9 @@ export const formatDateTime = (
   }).format(date);
 };
 
-export const calculateDaysUntilExpiry = (expiredAt?: string | null): number | null => {
+export const calculateDaysUntilExpiry = (
+  expiredAt?: string | null,
+): number | null => {
   if (!expiredAt) return null;
 
   const expiry = new Date(expiredAt);
