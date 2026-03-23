@@ -14,6 +14,7 @@ import type {
   CreateProductInboundPayload,
   IngredientBatchListParams,
   ProductBatchListParams,
+  UpdateBatchCodePayload,
 } from "@/types/kitchen/inventoryBatch.types";
 
 export const kitchenInventoryKeys = {
@@ -28,6 +29,12 @@ export const kitchenInventoryKeys = {
     centralKitchenId: number,
     params?: ProductBatchListParams,
   ) => ["kitchenInventory", "productBatches", centralKitchenId, params] as const,
+
+  ingredientBatchDetail: (centralKitchenId: number, batchId: number) =>
+    ["kitchenInventory", "ingredientBatchDetail", centralKitchenId, batchId] as const,
+
+  productBatchDetail: (centralKitchenId: number, batchId: number) =>
+    ["kitchenInventory", "productBatchDetail", centralKitchenId, batchId] as const,
 
   ingredients: ["kitchenInventory", "ingredients"] as const,
   products: ["kitchenInventory", "products"] as const,
@@ -70,6 +77,46 @@ export const useProductBatches = (
       return res.data ?? [];
     },
     enabled: !!centralKitchenId,
+  });
+};
+
+export const useIngredientBatchDetail = (
+  centralKitchenId?: number,
+  batchId?: number | null,
+) => {
+  return useQuery({
+    queryKey: kitchenInventoryKeys.ingredientBatchDetail(
+      Number(centralKitchenId),
+      Number(batchId),
+    ),
+    queryFn: async () => {
+      const res = await inventoryApi.getIngredientBatchDetail(
+        Number(centralKitchenId),
+        Number(batchId),
+      );
+      return res.data ?? null;
+    },
+    enabled: !!centralKitchenId && !!batchId,
+  });
+};
+
+export const useProductBatchDetail = (
+  centralKitchenId?: number,
+  batchId?: number | null,
+) => {
+  return useQuery({
+    queryKey: kitchenInventoryKeys.productBatchDetail(
+      Number(centralKitchenId),
+      Number(batchId),
+    ),
+    queryFn: async () => {
+      const res = await inventoryApi.getProductBatchDetail(
+        Number(centralKitchenId),
+        Number(batchId),
+      );
+      return res.data ?? null;
+    },
+    enabled: !!centralKitchenId && !!batchId,
   });
 };
 
@@ -119,9 +166,10 @@ export const useIngredientOptions = () => {
   return {
     ...query,
     options,
+    hasError: query.isError,
+    isEmpty: !query.isLoading && !query.isError && options.length === 0,
   };
 };
-
 export const useProductOptions = () => {
   const query = useProducts();
 
@@ -138,6 +186,8 @@ export const useProductOptions = () => {
   return {
     ...query,
     options,
+    hasError: query.isError,
+    isEmpty: !query.isLoading && !query.isError && options.length === 0,
   };
 };
 
@@ -197,6 +247,12 @@ export const useAdjustIngredientBatch = () => {
       queryClient.invalidateQueries({
         queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
       });
+      queryClient.invalidateQueries({
+        queryKey: kitchenInventoryKeys.ingredientBatchDetail(
+          variables.centralKitchenId,
+          payloadBatchIdFromVariables(variables.payload),
+        ),
+      });
     },
   });
 };
@@ -216,6 +272,68 @@ export const useAdjustProductBatch = () => {
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: kitchenInventoryKeys.productBatchDetail(
+          variables.centralKitchenId,
+          payloadBatchIdFromVariables(variables.payload),
+        ),
+      });
+    },
+  });
+};
+
+export const useRenameIngredientBatchCode = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      centralKitchenId,
+      batchId,
+      payload,
+    }: {
+      centralKitchenId: number;
+      batchId: number;
+      payload: UpdateBatchCodePayload;
+    }) => inventoryApi.renameIngredientBatchCode(centralKitchenId, batchId, payload),
+
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: kitchenInventoryKeys.ingredientBatchDetail(
+          variables.centralKitchenId,
+          variables.batchId,
+        ),
+      });
+    },
+  });
+};
+
+export const useRenameProductBatchCode = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      centralKitchenId,
+      batchId,
+      payload,
+    }: {
+      centralKitchenId: number;
+      batchId: number;
+      payload: UpdateBatchCodePayload;
+    }) => inventoryApi.renameProductBatchCode(centralKitchenId, batchId, payload),
+
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: kitchenInventoryKeys.productBatchDetail(
+          variables.centralKitchenId,
+          variables.batchId,
+        ),
       });
     },
   });
@@ -237,6 +355,12 @@ export const useDeleteIngredientBatch = () => {
       queryClient.invalidateQueries({
         queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
       });
+      queryClient.removeQueries({
+        queryKey: kitchenInventoryKeys.ingredientBatchDetail(
+          variables.centralKitchenId,
+          variables.batchId,
+        ),
+      });
     },
   });
 };
@@ -257,6 +381,16 @@ export const useDeleteProductBatch = () => {
       queryClient.invalidateQueries({
         queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
       });
+      queryClient.removeQueries({
+        queryKey: kitchenInventoryKeys.productBatchDetail(
+          variables.centralKitchenId,
+          variables.batchId,
+        ),
+      });
     },
   });
 };
+
+const payloadBatchIdFromVariables = (
+  payload: AdjustIngredientBatchPayload | AdjustProductBatchPayload,
+) => payload.batchId;

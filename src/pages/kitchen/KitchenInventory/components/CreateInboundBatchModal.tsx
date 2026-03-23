@@ -31,6 +31,7 @@ type Props = {
   ingredientOptions: Option[];
   productOptions: Option[];
   loadingOptions?: boolean;
+  optionsError?: boolean;
   submitting?: boolean;
   onClose: () => void;
   onSubmit: (payload: {
@@ -54,6 +55,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
   ingredientOptions,
   productOptions,
   loadingOptions = false,
+  optionsError = false,
   submitting = false,
   onClose,
   onSubmit,
@@ -74,13 +76,22 @@ const CreateInboundBatchModal: React.FC<Props> = ({
   }, [open, activeTab]);
 
   const options = activeTab === "INGREDIENT" ? ingredientOptions : productOptions;
+
   const quantityNumber = useMemo(() => Number(quantity), [quantity]);
+
   const isInvalidQuantity =
-    !quantity.trim() || Number.isNaN(quantityNumber) || quantityNumber <= 0;
+    !quantity.trim() ||
+    Number.isNaN(quantityNumber) ||
+    quantityNumber <= 0 ||
+    !Number.isInteger(quantityNumber);
+
+  const hasNoOptions = !loadingOptions && !optionsError && options.length === 0;
 
   const isDisabled =
     submitting ||
     loadingOptions ||
+    optionsError ||
+    hasNoOptions ||
     !itemId ||
     !batchCode.trim() ||
     !createdAt ||
@@ -92,7 +103,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     await onSubmit({
       itemId: Number(itemId),
       batchCode: batchCode.trim(),
-      quantity: quantityNumber,
+      quantity: Number(quantityNumber),
       createdAtUtc: new Date(createdAt).toISOString(),
       reason: reason.trim() || undefined,
     });
@@ -110,14 +121,26 @@ const CreateInboundBatchModal: React.FC<Props> = ({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>{activeTab === "INGREDIENT" ? "Nguyên liệu" : "Sản phẩm"}</Label>
-            <Select value={itemId} onValueChange={setItemId} disabled={loadingOptions}>
+
+            <Select
+              value={itemId}
+              onValueChange={setItemId}
+              disabled={loadingOptions || optionsError || hasNoOptions}
+            >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    loadingOptions ? "Đang tải dữ liệu..." : "Chọn mặt hàng"
+                    loadingOptions
+                      ? "Đang tải dữ liệu..."
+                      : optionsError
+                        ? "Không tải được danh sách mặt hàng"
+                        : hasNoOptions
+                          ? "Không có mặt hàng khả dụng"
+                          : "Chọn mặt hàng"
                   }
                 />
               </SelectTrigger>
+
               <SelectContent>
                 {options.map((option) => (
                   <SelectItem key={option.value} value={String(option.value)}>
@@ -126,6 +149,19 @@ const CreateInboundBatchModal: React.FC<Props> = ({
                 ))}
               </SelectContent>
             </Select>
+
+            {optionsError ? (
+              <p className="text-sm text-destructive">
+                Không có quyền tải danh sách mặt hàng. BE đang trả 403 cho danh sách{" "}
+                {activeTab === "INGREDIENT" ? "nguyên liệu" : "sản phẩm"}.
+              </p>
+            ) : null}
+
+            {hasNoOptions ? (
+              <p className="text-sm text-muted-foreground">
+                Hiện chưa có mặt hàng nào khả dụng để nhập lô.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -142,11 +178,16 @@ const CreateInboundBatchModal: React.FC<Props> = ({
             <Input
               type="number"
               min={1}
-              step="any"
+              step={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Nhập số lượng"
             />
+            {isInvalidQuantity && quantity.trim() ? (
+              <p className="text-sm text-destructive">
+                Số lượng phải là số nguyên lớn hơn 0.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
