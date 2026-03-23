@@ -9,6 +9,7 @@ import IncomingOrderDetailDialog from "./components/IncomingOrderDetailDialog";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useIncomingOrders } from "@/hooks/kitchen/useIncomingOrders";
+import { useIncomingOrderDetail } from "@/hooks/kitchen/useIncomingOrderDetail";
 import { useLockIncomingOrder } from "@/hooks/kitchen/useLockIncomingOrder";
 import { useReceiveIncomingOrder } from "@/hooks/kitchen/useReceiveIncomingOrder";
 import { useForwardIncomingOrder } from "@/hooks/kitchen/useForwardIncomingOrder";
@@ -21,6 +22,8 @@ import type { IncomingOrdersFilter } from "./helpers";
 import {
   INCOMING_ORDER_DEFAULT_FILTER,
   getIncomingOrders,
+  getInsufficientStockItems,
+  hasSufficientCentralKitchenStock,
   sortOrdersByNewest,
 } from "./helpers";
 
@@ -32,8 +35,7 @@ const IncomingOrdersPage: React.FC = () => {
   const [filter, setFilter] = useState<IncomingOrdersFilter>(
     INCOMING_ORDER_DEFAULT_FILTER,
   );
-  const [selectedOrder, setSelectedOrder] = useState<IncomingOrder | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
 
   const queryParams = useMemo<StoreOrderQuery>(
     () => ({
@@ -53,6 +55,18 @@ const IncomingOrdersPage: React.FC = () => {
     refetch,
   } = useIncomingOrders(centralKitchenId, queryParams);
 
+  const {
+    data: selectedOrderResponse,
+    isLoading: detailLoading,
+    isFetching: detailFetching,
+    refetch: refetchDetail,
+  } = useIncomingOrderDetail(centralKitchenId, selectedOrderId ?? 0);
+
+  const selectedOrder = useMemo<IncomingOrder | null>(() => {
+    if (!selectedOrderResponse) return null;
+    return (selectedOrderResponse as any)?.data ?? selectedOrderResponse ?? null;
+  }, [selectedOrderResponse]);
+
   const lockIncomingOrderMutation = useLockIncomingOrder();
   const receiveIncomingOrderMutation = useReceiveIncomingOrder();
   const forwardIncomingOrderMutation = useForwardIncomingOrder();
@@ -68,35 +82,21 @@ const IncomingOrdersPage: React.FC = () => {
   const handleRefresh = async () => {
     try {
       await refetch();
+      if (selectedOrderId) {
+        await refetchDetail();
+      }
       toast.success("Incoming orders refreshed");
     } catch {
       toast.error("Failed to refresh incoming orders");
     }
   };
 
-  const handleViewDetail = async (order: IncomingOrder) => {
-    try {
-      setDetailLoading(true);
-
-      const response = await incomingOrdersApi.detail(
-        centralKitchenId,
-        order.storeOrderId,
-      );
-
-      const detail = (response as any)?.data ?? response;
-      setSelectedOrder(detail);
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to load order detail.",
-      );
-    } finally {
-      setDetailLoading(false);
-    }
+  const handleViewDetail = (order: IncomingOrder) => {
+    setSelectedOrderId(order.storeOrderId);
   };
 
   const handleCloseDetail = () => {
-    setSelectedOrder(null);
-    setDetailLoading(false);
+    setSelectedOrderId(null);
   };
 
   const handleReceiveOrder = async (order: IncomingOrder) => {
@@ -127,8 +127,9 @@ const IncomingOrdersPage: React.FC = () => {
 
         await refetch();
 
-        if (selectedOrder?.storeOrderId === order.storeOrderId) {
-          setSelectedOrder(latestOrder);
+        if (selectedOrderId === order.storeOrderId) {
+          setSelectedOrderId(order.storeOrderId);
+          await refetchDetail();
         }
 
         return;
@@ -149,39 +150,15 @@ const IncomingOrdersPage: React.FC = () => {
 
       await refetch();
 
+      if (selectedOrderId === order.storeOrderId) {
+        await refetchDetail();
+      }
+
       toast.success(
         receiveResult.message ||
           lockResponse?.message ||
           `Order SO-${order.storeOrderId} received successfully.`,
       );
-
-      if (selectedOrder?.storeOrderId === order.storeOrderId) {
-        setSelectedOrder({
-          ...selectedOrder,
-          status: receiveResult.status,
-          lockedAt:
-            (lockResponse as any)?.data?.lockedAt ??
-            selectedOrder.lockedAt ??
-            null,
-          receivedAt: receiveResult.receivedAt ?? null,
-          receivedBy: receiveResult.receivedBy ?? null,
-          receiveNote: receiveResult.receiveNote ?? null,
-          processingNote: receiveResult.processingNote ?? null,
-          processingNoteUpdatedAt:
-            receiveResult.processingNoteUpdatedAt ?? null,
-          processingNoteUpdatedBy:
-            receiveResult.processingNoteUpdatedBy ?? null,
-          forwardedAt: receiveResult.forwardedAt ?? null,
-          forwardedBy: receiveResult.forwardedBy ?? null,
-          forwardNote: receiveResult.forwardNote ?? null,
-          preparedAt: receiveResult.preparedAt ?? null,
-          preparedBy: receiveResult.preparedBy ?? null,
-          preparingNote: receiveResult.preparingNote ?? null,
-          updatedAt: receiveResult.updatedAt ?? selectedOrder.updatedAt,
-          updatedBy: receiveResult.updatedBy ?? selectedOrder.updatedBy ?? null,
-          statusNote: receiveResult.statusNote ?? null,
-        });
-      }
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message || "Failed to receive incoming order.",
@@ -194,6 +171,50 @@ const IncomingOrdersPage: React.FC = () => {
     note: string = "",
   ) => {
     try {
+      const latestDetailResponse = await incomingOrdersApi.detail(
+        centralKitchenId,
+        order.storeOrderId,
+      );
+      const latestOrder =
+        (latestDetailResponse as any)?.data ?? latestDetailResponse;
+
+      if (!latestOrder) {
+        toast.error("Unable to load latest order detail.");
+        return;
+      }
+
+      if (latestOrder.status !== "RECEIVED_BY_KITCHEN") {
+        toast.error(
+          `Order SO-${order.storeOrderId} is currently ${latestOrder.status}. Please refresh and try again.`,
+        );
+
+        await refetch();
+
+        if (selectedOrderId === order.storeOrderId) {
+          await refetchDetail();
+        }
+
+        return;
+      }
+
+      if (!hasSufficientCentralKitchenStock(latestOrder)) {
+        const insufficientItems = getInsufficientStockItems(latestOrder);
+
+        toast.error(
+          insufficientItems.length > 0
+            ? `Cannot forward. ${insufficientItems
+                .map((item) => item.productName)
+                .join(", ")} ${
+                insufficientItems.length === 1 ? "is" : "are"
+              } insufficient in central kitchen stock.`
+            : "Cannot forward because central kitchen inventory is insufficient.",
+        );
+
+        setSelectedOrderId(order.storeOrderId);
+        await refetchDetail();
+        return;
+      }
+
       const result = await forwardIncomingOrderMutation.mutateAsync({
         centralKitchenId,
         orderId: order.storeOrderId,
@@ -204,40 +225,14 @@ const IncomingOrdersPage: React.FC = () => {
 
       await refetch();
 
+      if (selectedOrderId === order.storeOrderId) {
+        await refetchDetail();
+      }
+
       toast.success(
         result.message ||
           `Order SO-${order.storeOrderId} forwarded to supply successfully.`,
       );
-
-      if (selectedOrder?.storeOrderId === order.storeOrderId) {
-        setSelectedOrder({
-          ...selectedOrder,
-          status: result.status,
-          receivedAt: result.receivedAt ?? selectedOrder.receivedAt ?? null,
-          receivedBy: result.receivedBy ?? selectedOrder.receivedBy ?? null,
-          receiveNote: result.receiveNote ?? selectedOrder.receiveNote ?? null,
-          processingNote:
-            result.processingNote ?? selectedOrder.processingNote ?? null,
-          processingNoteUpdatedAt:
-            result.processingNoteUpdatedAt ??
-            selectedOrder.processingNoteUpdatedAt ??
-            null,
-          processingNoteUpdatedBy:
-            result.processingNoteUpdatedBy ??
-            selectedOrder.processingNoteUpdatedBy ??
-            null,
-          forwardedAt: result.forwardedAt ?? null,
-          forwardedBy: result.forwardedBy ?? null,
-          forwardNote: result.forwardNote ?? null,
-          preparedAt: result.preparedAt ?? selectedOrder.preparedAt ?? null,
-          preparedBy: result.preparedBy ?? selectedOrder.preparedBy ?? null,
-          preparingNote:
-            result.preparingNote ?? selectedOrder.preparingNote ?? null,
-          updatedAt: result.updatedAt ?? selectedOrder.updatedAt,
-          updatedBy: result.updatedBy ?? selectedOrder.updatedBy ?? null,
-          statusNote: result.statusNote ?? selectedOrder.statusNote ?? null,
-        });
-      }
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message || "Failed to forward order to supply.",
@@ -260,39 +255,14 @@ const IncomingOrdersPage: React.FC = () => {
 
       await refetch();
 
+      if (selectedOrderId === order.storeOrderId) {
+        await refetchDetail();
+      }
+
       toast.success(
         result.message ||
           `Processing note updated for order SO-${order.storeOrderId}.`,
       );
-
-      if (selectedOrder?.storeOrderId === order.storeOrderId) {
-        setSelectedOrder({
-          ...selectedOrder,
-          status: result.status,
-          receivedAt: result.receivedAt ?? selectedOrder.receivedAt ?? null,
-          receivedBy: result.receivedBy ?? selectedOrder.receivedBy ?? null,
-          receiveNote: result.receiveNote ?? selectedOrder.receiveNote ?? null,
-          processingNote: result.processingNote ?? null,
-          processingNoteUpdatedAt:
-            result.processingNoteUpdatedAt ??
-            selectedOrder.processingNoteUpdatedAt ??
-            null,
-          processingNoteUpdatedBy:
-            result.processingNoteUpdatedBy ??
-            selectedOrder.processingNoteUpdatedBy ??
-            null,
-          forwardedAt: result.forwardedAt ?? selectedOrder.forwardedAt ?? null,
-          forwardedBy: result.forwardedBy ?? selectedOrder.forwardedBy ?? null,
-          forwardNote: result.forwardNote ?? selectedOrder.forwardNote ?? null,
-          preparedAt: result.preparedAt ?? selectedOrder.preparedAt ?? null,
-          preparedBy: result.preparedBy ?? selectedOrder.preparedBy ?? null,
-          preparingNote:
-            result.preparingNote ?? selectedOrder.preparingNote ?? null,
-          updatedAt: result.updatedAt ?? selectedOrder.updatedAt,
-          updatedBy: result.updatedBy ?? selectedOrder.updatedBy ?? null,
-          statusNote: result.statusNote ?? selectedOrder.statusNote ?? null,
-        });
-      }
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message || "Failed to update processing note.",
@@ -370,13 +340,13 @@ const IncomingOrdersPage: React.FC = () => {
 
       <IncomingOrderDetailDialog
         order={selectedOrder}
-        open={!!selectedOrder || detailLoading}
+        open={!!selectedOrderId}
         onClose={handleCloseDetail}
         onSaveProcessingNote={handleSaveProcessingNote}
         onForwardToSupply={handleForwardOrder}
         savingProcessingNote={updateProcessingNoteMutation.isPending}
         forwardingToSupply={forwardIncomingOrderMutation.isPending}
-        loading={detailLoading}
+        loading={detailLoading || detailFetching}
         centralKitchenId={centralKitchenId}
       />
     </div>

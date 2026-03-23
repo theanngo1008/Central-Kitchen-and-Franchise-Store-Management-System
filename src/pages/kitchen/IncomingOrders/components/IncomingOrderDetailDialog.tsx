@@ -15,9 +15,12 @@ import { useIncomingOrderHistory } from "@/hooks/kitchen/useIncomingOrderHistory
 import {
   formatDate,
   formatDateTime,
+  getInsufficientStockItems,
   getOrderDisplayCode,
   getOrderTimeline,
   getOrderTotalQuantity,
+  hasIncomingOrderInventoryCheckData,
+  hasSufficientCentralKitchenStock,
 } from "../helpers";
 
 type Props = {
@@ -78,15 +81,32 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
     [order],
   );
 
+  const hasInventoryCheckData = useMemo(
+    () => (order ? hasIncomingOrderInventoryCheckData(order) : false),
+    [order],
+  );
+
+  const hasEnoughStock = useMemo(
+    () => (order ? hasSufficientCentralKitchenStock(order) : true),
+    [order],
+  );
+
+  const insufficientItems = useMemo(
+    () => (order ? getInsufficientStockItems(order) : []),
+    [order],
+  );
+
   if (!open) return null;
 
   const canEditProcessingNote = order
     ? ALLOWED_NOTE_STATUSES.has(order.status)
     : false;
 
-  const canForwardToSupply = order
+  const canForwardByStatus = order
     ? order.status === "RECEIVED_BY_KITCHEN"
     : false;
+
+  const canForwardToSupply = canForwardByStatus && hasEnoughStock;
 
   const shouldShowForwardSection = order
     ? order.status === "RECEIVED_BY_KITCHEN" ||
@@ -113,76 +133,76 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
         <DialogHeader>
           <DialogTitle>
             {order
-              ? `Order ${getOrderDisplayCode(order)}`
-              : "Loading order detail..."}
+              ? `Đơn hàng ${getOrderDisplayCode(order)}`
+              : "Đang tải chi tiết đơn hàng..."}
           </DialogTitle>
         </DialogHeader>
 
         {loading || !order ? (
           <div className="py-6 text-sm text-muted-foreground">
-            Loading order detail...
+            Đang tải chi tiết đơn hàng...
           </div>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Store</p>
+                <p className="text-muted-foreground">Cửa hàng</p>
                 <p className="font-medium">{order.franchiseName}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Status</p>
+                <p className="text-muted-foreground">Trạng thái</p>
                 <StatusBadge status={order.status} />
               </div>
 
               <div>
-                <p className="text-muted-foreground">Order Date</p>
+                <p className="text-muted-foreground">Ngày đặt hàng</p>
                 <p className="font-medium">{formatDate(order.orderDate)}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Created</p>
+                <p className="text-muted-foreground">Thời gian tạo</p>
                 <p>{formatDateTime(order.createdAt)}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Submitted</p>
+                <p className="text-muted-foreground">Thời gian gửi</p>
                 <p>{formatDateTime(order.submittedAt)}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Locked</p>
+                <p className="text-muted-foreground">Thời gian khóa</p>
                 <p>{formatDateTime(order.lockedAt)}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Received At</p>
+                <p className="text-muted-foreground">Thời gian tiếp nhận</p>
                 <p>{formatDateTime(order.receivedAt)}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Received By</p>
+                <p className="text-muted-foreground">Người tiếp nhận</p>
                 <p>{order.receivedBy || "--"}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Forwarded At</p>
+                <p className="text-muted-foreground">Thời gian chuyển Cung ứng</p>
                 <p>{formatDateTime(order.forwardedAt)}</p>
               </div>
 
               <div>
-                <p className="text-muted-foreground">Forwarded By</p>
+                <p className="text-muted-foreground">Người chuyển Cung ứng</p>
                 <p>{order.forwardedBy || "--"}</p>
               </div>
             </div>
 
             <div className="border-t pt-4">
               <div className="mb-3 flex items-center justify-between">
-                <p className="font-medium">Processing Note</p>
+                <p className="font-medium">Ghi chú xử lý</p>
                 {order.processingNoteUpdatedAt && (
                   <span className="text-xs text-muted-foreground">
-                    Updated {formatDateTime(order.processingNoteUpdatedAt)}
+                    Cập nhật lúc {formatDateTime(order.processingNoteUpdatedAt)}
                     {order.processingNoteUpdatedBy
-                      ? ` by ${order.processingNoteUpdatedBy}`
+                      ? ` bởi ${order.processingNoteUpdatedBy}`
                       : ""}
                   </span>
                 )}
@@ -200,8 +220,8 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">
                     {canEditProcessingNote
-                      ? "Có thể cập nhật note khi đơn ở trạng thái Received by Kitchen hoặc Forwarded to Supply."
-                      : "Không thể cập nhật note ở trạng thái hiện tại."}
+                      ? "Có thể cập nhật ghi chú khi đơn ở trạng thái Bếp đã tiếp nhận hoặc Đã chuyển Cung ứng."
+                      : "Không thể cập nhật ghi chú ở trạng thái hiện tại."}
                   </p>
 
                   <Button
@@ -215,7 +235,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                     }
                   >
                     <Save size={16} className="mr-2" />
-                    {savingProcessingNote ? "Saving..." : "Save Note"}
+                    {savingProcessingNote ? "Đang lưu..." : "Lưu ghi chú"}
                   </Button>
                 </div>
               </div>
@@ -224,53 +244,80 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
             {shouldShowForwardSection && (
               <div className="border-t pt-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="font-medium">Forward to Supply</p>
+                  <p className="font-medium">Chuyển sang Cung ứng</p>
                   {order.forwardedAt && (
                     <span className="text-xs text-muted-foreground">
-                      Forwarded {formatDateTime(order.forwardedAt)}
-                      {order.forwardedBy ? ` by ${order.forwardedBy}` : ""}
+                      Đã chuyển lúc {formatDateTime(order.forwardedAt)}
+                      {order.forwardedBy ? ` bởi ${order.forwardedBy}` : ""}
                     </span>
                   )}
                 </div>
 
-                {canForwardToSupply ? (
+                {canForwardByStatus ? (
                   <div className="space-y-3">
                     <Textarea
                       value={forwardNoteValue}
                       onChange={(e) => setForwardNoteValue(e.target.value)}
-                      placeholder="Nhập ghi chú khi chuyển đơn sang Supply..."
+                      placeholder="Nhập ghi chú khi chuyển đơn sang Cung ứng..."
                       disabled={forwardingToSupply}
                       rows={3}
                     />
 
+                    {hasInventoryCheckData && !hasEnoughStock && (
+                      <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                        <p className="font-medium text-destructive">
+                          Không thể chuyển đơn sang Bộ phận Cung ứng vì tồn kho tại
+                          Bếp Trung Tâm không đủ.
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Vui lòng kiểm tra lại tồn kho đối với các mặt hàng đang
+                          thiếu trước khi chuyển đơn.
+                        </p>
+
+                        {insufficientItems.length > 0 && (
+                          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            {insufficientItems.map((item) => (
+                              <li key={item.productId}>
+                                • {item.productName}: cần {item.quantity}{" "}
+                                {item.unit}, hiện có{" "}
+                                {item.availableInCentralKitchenQuantity ?? 0}{" "}
+                                {item.unit}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs text-muted-foreground">
-                        Chỉ có thể chuyển sang Supply khi đơn ở trạng thái
-                        Received by Kitchen.
+                        {hasInventoryCheckData && !hasEnoughStock
+                          ? "Không thể chuyển sang Cung ứng khi còn mặt hàng thiếu tồn kho tại Bếp Trung Tâm."
+                          : "Chỉ có thể chuyển sang Cung ứng khi đơn ở trạng thái Bếp đã tiếp nhận."}
                       </p>
 
                       <Button
                         type="button"
                         size="sm"
                         onClick={handleForward}
-                        disabled={forwardingToSupply}
+                        disabled={forwardingToSupply || !canForwardToSupply}
                       >
                         <Send size={16} className="mr-2" />
                         {forwardingToSupply
-                          ? "Forwarding..."
-                          : "Forward to Supply"}
+                          ? "Đang chuyển..."
+                          : "Chuyển sang Cung ứng"}
                       </Button>
                     </div>
                   </div>
                 ) : order.status === "FORWARDED_TO_SUPPLY" ? (
                   <div className="rounded-md bg-muted/30 p-3 text-sm">
                     <p className="text-muted-foreground">
-                      Đơn đã được chuyển sang Supply.
+                      Đơn đã được chuyển sang Bộ phận Cung ứng.
                     </p>
                     {order.forwardNote?.trim() ? (
                       <div className="mt-2">
                         <p className="mb-1 text-muted-foreground">
-                          Saved Forward Note
+                          Ghi chú khi chuyển đơn
                         </p>
                         <p className="font-medium whitespace-pre-wrap">
                           {order.forwardNote}
@@ -283,7 +330,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
             )}
 
             <div className="border-t pt-4">
-              <p className="mb-3 font-medium">Timeline</p>
+              <p className="mb-3 font-medium">Tiến trình xử lý</p>
 
               <div className="space-y-2 text-sm">
                 {timeline.map((t) => (
@@ -299,15 +346,15 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
             </div>
 
             <div className="border-t pt-4">
-              <p className="mb-3 font-medium">Processing History</p>
+              <p className="mb-3 font-medium">Lịch sử xử lý</p>
 
               {historyLoading ? (
                 <div className="text-sm text-muted-foreground">
-                  Loading history...
+                  Đang tải lịch sử xử lý...
                 </div>
               ) : history.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  No history records yet.
+                  Chưa có lịch sử xử lý.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -347,31 +394,130 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
             </div>
 
             <div className="border-t pt-4">
-              <p className="mb-3 font-medium">Order Items</p>
+              <p className="mb-3 font-medium">Danh sách mặt hàng</p>
 
-              <div className="space-y-2">
-                {order.items.map((item) => (
-                  <div
-                    key={item.productId}
-                    className="flex items-center justify-between rounded-lg bg-muted/30 p-3 text-sm"
-                  >
-                    <span className="font-medium">{item.productName}</span>
-                    <span>
-                      {item.quantity} {item.unit}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {order.items.map((item) => {
+                  const hasItemCheckData =
+                    typeof item.isSufficientInCentralKitchen === "boolean" ||
+                    typeof item.availableInCentralKitchenQuantity === "number";
+
+                  const availableQty = item.availableInCentralKitchenQuantity ?? 0;
+                  const isEnough = hasItemCheckData
+                    ? (item.isSufficientInCentralKitchen ??
+                        availableQty >= item.quantity)
+                    : true;
+
+                  return (
+                    <div
+                      key={item.productId}
+                      className="rounded-lg border bg-muted/30 p-3 text-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{item.productName}</p>
+                          {item.sku ? (
+                            <p className="text-xs text-muted-foreground">
+                              SKU: {item.sku}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="text-right">
+                          <p className="font-medium">
+                            {item.quantity} {item.unit}
+                          </p>
+                          {hasItemCheckData ? (
+                            <p
+                              className={`text-xs ${
+                                isEnough
+                                  ? "text-green-600"
+                                  : "text-destructive"
+                              }`}
+                            >
+                              {isEnough ? "Đủ tồn kho" : "Thiếu tồn kho"}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {hasItemCheckData && (
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                          <div className="rounded-md bg-background p-2">
+                            <p className="text-muted-foreground">Số lượng đặt</p>
+                            <p className="font-medium">
+                              {item.quantity} {item.unit}
+                            </p>
+                          </div>
+
+                          <div className="rounded-md bg-background p-2">
+                            <p className="text-muted-foreground">
+                              Tồn kho tại Bếp Trung Tâm
+                            </p>
+                            <p
+                              className={`font-medium ${
+                                isEnough
+                                  ? "text-green-600"
+                                  : "text-destructive"
+                              }`}
+                            >
+                              {availableQty} {item.unit}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {item.availableCentralKitchenBatches?.length ? (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Các lô còn tồn
+                          </p>
+
+                          {item.availableCentralKitchenBatches.map((batch) => (
+                            <div
+                              key={batch.batchId}
+                              className="grid grid-cols-3 gap-3 rounded-md bg-background p-2 text-xs"
+                            >
+                              <div>
+                                <p className="text-muted-foreground">Mã lô</p>
+                                <p className="font-medium">{batch.batchCode}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-muted-foreground">
+                                  Số lượng
+                                </p>
+                                <p className="font-medium">
+                                  {batch.quantity} {item.unit}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-muted-foreground">
+                                  Hạn sử dụng
+                                </p>
+                                <p className="font-medium">
+                                  {formatDate(batch.expiredAt)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             <div className="flex items-center justify-between border-t pt-4 font-semibold">
-              <span>Total Quantity</span>
+              <span>Tổng số lượng</span>
               <span>{totalQty}</span>
             </div>
 
             {order.cancelReason && (
               <div className="border-t pt-4 text-sm">
-                <p className="mb-1 text-muted-foreground">Cancel Reason</p>
+                <p className="mb-1 text-muted-foreground">Lý do hủy</p>
                 <p className="font-medium text-destructive">
                   {order.cancelReason}
                 </p>

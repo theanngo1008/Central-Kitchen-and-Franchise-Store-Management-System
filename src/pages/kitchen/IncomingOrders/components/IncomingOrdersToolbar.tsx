@@ -59,9 +59,9 @@ const IncomingOrdersToolbar: React.FC<Props> = ({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold">Incoming Orders</h3>
+            <h3 className="text-sm font-semibold">Đơn hàng đến</h3>
             <p className="text-sm text-muted-foreground">
-              {totalOrders} order{totalOrders === 1 ? "" : "s"} found
+              Tìm thấy {totalOrders} đơn hàng
             </p>
           </div>
 
@@ -76,7 +76,7 @@ const IncomingOrdersToolbar: React.FC<Props> = ({
               size={16}
               className={`mr-2 ${refreshing ? "animate-spin" : ""}`}
             />
-            Refresh
+            Làm mới
           </Button>
         </div>
 
@@ -115,7 +115,7 @@ const IncomingOrdersToolbar: React.FC<Props> = ({
                       : "text-muted-foreground hover:text-foreground",
                   ].join(" ")}
                 >
-                  {activeMoreOption ? activeMoreOption.label : "More"}
+                  {activeMoreOption ? activeMoreOption.label : "Khác"}
                   <ChevronDown size={16} className="ml-2" />
                 </button>
               </DropdownMenuTrigger>

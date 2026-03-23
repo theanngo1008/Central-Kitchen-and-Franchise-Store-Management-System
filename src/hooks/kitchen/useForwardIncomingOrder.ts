@@ -20,12 +20,12 @@ export const useForwardIncomingOrder = () => {
 
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["incoming-orders", variables.centralKitchenId],
+        queryKey: ["incomingOrders", variables.centralKitchenId],
       });
 
       queryClient.invalidateQueries({
         queryKey: [
-          "incoming-order-detail",
+          "incomingOrderDetail",
           variables.centralKitchenId,
           variables.orderId,
         ],
@@ -33,7 +33,7 @@ export const useForwardIncomingOrder = () => {
 
       queryClient.invalidateQueries({
         queryKey: [
-          "incoming-order-history",
+          "incomingOrderHistory",
           variables.centralKitchenId,
           variables.orderId,
         ],
