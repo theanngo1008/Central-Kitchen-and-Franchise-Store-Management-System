@@ -1,6 +1,6 @@
 import { get } from '@/api';
 import { unwrapResponse } from '@/api/unwrapResponse';
-import type { FranchiseInventorySummaryResponse } from '@/types/inventory';
+import type { FranchiseInventorySummaryResponse } from '@/types/store/inventory';
 
 const ENDPOINT = '/franchises';
 

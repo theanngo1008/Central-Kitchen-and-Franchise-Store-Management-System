@@ -21,7 +21,7 @@ import IncomingOrders from "@/pages/kitchen/IncomingOrders";
 import ProductionPlanning from "@/pages/kitchen/ProductionPlanning";
 import ProductionSummary from "@/pages/kitchen/ProductionSummary";
 import StorePackaging from "@/pages/kitchen/StorePackaging";
-import KitchenInventory from "@/pages/kitchen/KitchenInventory";
+import KitchenInventory from "@/pages/kitchen/KitchenInventory/index";
 // Coordinator Pages
 import CoordinatorDashboard from "@/pages/coordinator/CoordinatorDashboard";
 import AggregatedOrders from "@/pages/coordinator/AggregatedOrders";
