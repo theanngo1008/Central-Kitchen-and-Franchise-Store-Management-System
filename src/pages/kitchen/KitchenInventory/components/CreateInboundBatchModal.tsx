@@ -72,6 +72,9 @@ const CreateInboundBatchModal: React.FC<Props> = ({
   const [createdAt, setCreatedAt] = useState(getLocalDateString());
   const [reason, setReason] = useState("");
 
+  const [quantityTouched, setQuantityTouched] = useState(false);
+  const [dateTouched, setDateTouched] = useState(false);
+
   useEffect(() => {
     if (!open) return;
 
@@ -80,6 +83,8 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     setQuantity("");
     setCreatedAt(getLocalDateString());
     setReason("");
+    setQuantityTouched(false);
+    setDateTouched(false);
   }, [open, activeTab]);
 
   const options =
@@ -94,13 +99,15 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     quantityNumber <= 0 ||
     !Number.isInteger(quantityNumber);
 
+  const showQuantityError = quantityTouched && isInvalidQuantity;
+
   const isFutureCreatedAt = !!createdAt && createdAt > today;
+  const showDateError = dateTouched && isFutureCreatedAt;
 
   const catalogLoadFailed =
     !loadingOptions && optionsError && options.length === 0;
 
-  const hasNoOptions =
-    !loadingOptions && !optionsError && options.length === 0;
+  const hasNoOptions = !loadingOptions && !optionsError && options.length === 0;
 
   const isDisabled =
     submitting ||
@@ -114,6 +121,9 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     isInvalidQuantity;
 
   const handleSubmit = async () => {
+    setQuantityTouched(true);
+    setDateTouched(true);
+
     if (isDisabled) return;
 
     await onSubmit({
@@ -196,9 +206,10 @@ const CreateInboundBatchModal: React.FC<Props> = ({
               step={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
+              onBlur={() => setQuantityTouched(true)}
               placeholder="Nhập số lượng"
             />
-            {isInvalidQuantity ? (
+            {showQuantityError ? (
               <p className="text-sm text-destructive">
                 Số lượng phải là số nguyên dương.
               </p>
@@ -213,8 +224,9 @@ const CreateInboundBatchModal: React.FC<Props> = ({
               value={createdAt}
               max={today}
               onChange={(e) => setCreatedAt(e.target.value)}
+              onBlur={() => setDateTouched(true)}
             />
-            {isFutureCreatedAt ? (
+            {showDateError ? (
               <p className="text-sm text-destructive">
                 Ngày nhập lô không được lớn hơn ngày hiện tại.
               </p>

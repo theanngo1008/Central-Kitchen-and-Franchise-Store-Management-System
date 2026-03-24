@@ -28,15 +28,27 @@ export interface IncomingOrderItem {
   sku?: string | null;
   productStatus?: string | null;
 
+  // Inventory check in central kitchen
   availableInCentralKitchenQuantity?: number | null;
   isSufficientInCentralKitchen?: boolean | null;
   availableCentralKitchenBatches?: IncomingOrderAvailableBatch[] | null;
 
-  forwardedQuantity?: number | null;  // Số lượng thực tế được gửi
-  droppedQuantity?: number | null;   // Số lượng bị hủy
-  isDroppedFromForward?: boolean | null; // Đã bị hủy
-  dropReason?: string | null;         // Lý do drop (nếu có)
-  isDropped?: boolean | null;         // Deprecated: use isDroppedFromForward
+  // Forward result (sanitized values from BE)
+  forwardedQuantity?: number | null;
+  droppedQuantity?: number | null;
+  isDroppedFromForward?: boolean | null;
+  dropReason?: string | null;
+
+  // Legacy fallback - keep temporarily if old BE data still exists
+  isDropped?: boolean | null;
+
+  // Diagnostic / raw snapshot fields from BE
+  hasForwardSnapshot?: boolean | null;
+  isForwardSnapshotConsistent?: boolean | null;
+  forwardSnapshotWarning?: string | null;
+  rawForwardSnapshotRequestedQuantity?: number | null;
+  rawForwardSnapshotForwardedQuantity?: number | null;
+  rawForwardSnapshotDroppedQuantity?: number | null;
 }
 
 export interface IncomingOrder {
