@@ -140,6 +140,10 @@ const KitchenInventory: React.FC = () => {
     ? ingredientBatchesQuery
     : productBatchesQuery;
 
+  const activeOptionsQuery = isIngredientTab
+    ? ingredientOptionsQuery
+    : productOptionsQuery;
+
   const loading = !centralKitchenId || activeListQuery.isLoading;
   const refreshing = activeListQuery.isFetching;
   const hasError = activeListQuery.isError;
@@ -176,7 +180,7 @@ const KitchenInventory: React.FC = () => {
     itemId: number;
     batchCode: string;
     quantity: number;
-    expiredAt: string;
+    createdAtUtc: string;
     reason?: string;
   }) => {
     if (!centralKitchenId) {
@@ -192,7 +196,7 @@ const KitchenInventory: React.FC = () => {
             ingredientId: payload.itemId,
             batchCode: payload.batchCode,
             quantity: payload.quantity,
-            expiredAt: payload.expiredAt,
+            createdAtUtc: payload.createdAtUtc,
             reason: payload.reason,
           },
         });
@@ -205,7 +209,7 @@ const KitchenInventory: React.FC = () => {
             productId: payload.itemId,
             batchCode: payload.batchCode,
             quantity: payload.quantity,
-            expiredAt: payload.expiredAt,
+            createdAtUtc: payload.createdAtUtc,
             reason: payload.reason,
           },
         });
@@ -490,12 +494,8 @@ const KitchenInventory: React.FC = () => {
         activeTab={activeTab}
         ingredientOptions={ingredientOptionsQuery.options}
         productOptions={productOptionsQuery.options}
-        loadingOptions={
-          ingredientOptionsQuery.isLoading || productOptionsQuery.isLoading
-        }
-        optionsError={
-          ingredientOptionsQuery.isError || productOptionsQuery.isError
-        }
+        loadingOptions={activeOptionsQuery.isLoading}
+        optionsError={activeOptionsQuery.isError}
         submitting={isCreating}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreateInbound}
