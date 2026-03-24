@@ -38,14 +38,21 @@ type Props = {
     itemId: number;
     batchCode: string;
     quantity: number;
-    expiredAt: string;
+    createdAtUtc: string;
     reason?: string;
   }) => void | Promise<void>;
 };
 
-const toDateInputValue = () => {
+const getLocalDateString = () => {
   const now = new Date();
-  return now.toISOString().slice(0, 10);
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+};
+
+const toUtcISOStringFromLocalDate = (dateValue: string) => {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+  return localDate.toISOString();
 };
 
 const CreateInboundBatchModal: React.FC<Props> = ({
@@ -62,7 +69,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
   const [itemId, setItemId] = useState("");
   const [batchCode, setBatchCode] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [expiredAt, setExpiredAt] = useState(toDateInputValue());
+  const [createdAt, setCreatedAt] = useState(getLocalDateString());
   const [reason, setReason] = useState("");
 
   useEffect(() => {
@@ -71,7 +78,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     setItemId("");
     setBatchCode("");
     setQuantity("");
-    setExpiredAt(toDateInputValue());
+    setCreatedAt(getLocalDateString());
     setReason("");
   }, [open, activeTab]);
 
@@ -79,6 +86,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     activeTab === "INGREDIENT" ? ingredientOptions : productOptions;
 
   const quantityNumber = useMemo(() => Number(quantity), [quantity]);
+  const today = getLocalDateString();
 
   const isInvalidQuantity =
     !quantity.trim() ||
@@ -86,16 +94,23 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     quantityNumber <= 0 ||
     !Number.isInteger(quantityNumber);
 
-  const hasNoOptions = !loadingOptions && !optionsError && options.length === 0;
+  const isFutureCreatedAt = !!createdAt && createdAt > today;
+
+  const catalogLoadFailed =
+    !loadingOptions && optionsError && options.length === 0;
+
+  const hasNoOptions =
+    !loadingOptions && !optionsError && options.length === 0;
 
   const isDisabled =
     submitting ||
     loadingOptions ||
-    optionsError ||
+    catalogLoadFailed ||
     hasNoOptions ||
     !itemId ||
     !batchCode.trim() ||
-    !expiredAt ||
+    !createdAt ||
+    isFutureCreatedAt ||
     isInvalidQuantity;
 
   const handleSubmit = async () => {
@@ -104,8 +119,8 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     await onSubmit({
       itemId: Number(itemId),
       batchCode: batchCode.trim(),
-      quantity: Number(quantityNumber),
-      expiredAt: new Date(expiredAt).toISOString(),
+      quantity: quantityNumber,
+      createdAtUtc: toUtcISOStringFromLocalDate(createdAt),
       reason: reason.trim() || undefined,
     });
   };
@@ -129,7 +144,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
             <Select
               value={itemId}
               onValueChange={setItemId}
-              disabled={loadingOptions || hasNoOptions}
+              disabled={loadingOptions || catalogLoadFailed || hasNoOptions}
             >
               <SelectTrigger>
                 <SelectValue
@@ -149,7 +164,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
               </SelectContent>
             </Select>
 
-            {optionsError ? (
+            {catalogLoadFailed ? (
               <p className="text-sm text-destructive">
                 Không tải được danh sách lựa chọn.
               </p>
@@ -191,13 +206,19 @@ const CreateInboundBatchModal: React.FC<Props> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="expiredAt">Hạn sử dụng</Label>
+            <Label htmlFor="createdAt">Ngày nhập lô</Label>
             <Input
-              id="expiredAt"
+              id="createdAt"
               type="date"
-              value={expiredAt}
-              onChange={(e) => setExpiredAt(e.target.value)}
+              value={createdAt}
+              max={today}
+              onChange={(e) => setCreatedAt(e.target.value)}
             />
+            {isFutureCreatedAt ? (
+              <p className="text-sm text-destructive">
+                Ngày nhập lô không được lớn hơn ngày hiện tại.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
