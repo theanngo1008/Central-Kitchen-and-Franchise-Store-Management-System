@@ -20,7 +20,10 @@ type Props = {
   batch: BatchRow | null;
   submitting?: boolean;
   onClose: () => void;
-  onSubmit: (payload: { batchCode: string; reason?: string }) => void | Promise<void>;
+  onSubmit: (payload: {
+    batchCode: string;
+    reason?: string;
+  }) => void | Promise<void>;
 };
 
 const RenameBatchCodeModal: React.FC<Props> = ({
@@ -40,7 +43,14 @@ const RenameBatchCodeModal: React.FC<Props> = ({
     }
   }, [open, batch]);
 
-  const disabled = !batch || !batchCode.trim() || submitting;
+  const normalizedCurrentCode = batch?.batchCode?.trim() ?? "";
+  const normalizedNewCode = batchCode.trim();
+
+  const disabled =
+    !batch ||
+    !normalizedNewCode ||
+    normalizedNewCode === normalizedCurrentCode ||
+    submitting;
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
@@ -82,7 +92,7 @@ const RenameBatchCodeModal: React.FC<Props> = ({
             <Button
               onClick={() =>
                 onSubmit({
-                  batchCode: batchCode.trim(),
+                  batchCode: normalizedNewCode,
                   reason: reason.trim() || undefined,
                 })
               }

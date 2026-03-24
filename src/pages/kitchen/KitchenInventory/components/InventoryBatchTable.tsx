@@ -79,11 +79,6 @@ const InventoryBatchTable: React.FC<Props> = ({
       render: (item: TableRow) => `${item.quantity} ${item.unit}`,
     },
     {
-      key: "createdAt",
-      label: "Ngày tạo lô",
-      render: (item: TableRow) => formatDate(item.createdAt),
-    },
-    {
       key: "expiredAt",
       label: "Hạn sử dụng",
       render: (item: TableRow) => {
@@ -98,7 +93,9 @@ const InventoryBatchTable: React.FC<Props> = ({
               <span className={isDanger ? "font-medium" : ""}>
                 {formatDate(item.expiredAt)}
               </span>
-              {isDanger ? <AlertTriangle size={14} className={expiryClass} /> : null}
+              {isDanger ? (
+                <AlertTriangle size={14} className={expiryClass} />
+              ) : null}
             </div>
             <p className={`text-xs ${expiryClass}`}>{expiryText}</p>
           </div>

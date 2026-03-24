@@ -61,11 +61,11 @@ const KitchenInventory: React.FC = () => {
   const [selectedBatch, setSelectedBatch] = useState<BatchRow | null>(null);
 
   const ingredientBatchesQuery = useIngredientBatches(centralKitchenId, {
-    includeZero: false,
+    includeZero: true,
   });
 
   const productBatchesQuery = useProductBatches(centralKitchenId, {
-    includeZero: false,
+    includeZero: true,
   });
 
   const ingredientOptionsQuery = useIngredientOptions();
@@ -98,7 +98,10 @@ const KitchenInventory: React.FC = () => {
     [currentData, search],
   );
 
-  const summary = useMemo(() => getInventorySummary(filteredData), [filteredData]);
+  const summary = useMemo(
+    () => getInventorySummary(filteredData),
+    [filteredData],
+  );
 
   const totalItems = useMemo(() => {
     const ids = new Set(
@@ -133,19 +136,16 @@ const KitchenInventory: React.FC = () => {
   const detailLoading =
     ingredientBatchDetailQuery.isLoading || productBatchDetailQuery.isLoading;
 
-  const loading =
-    !centralKitchenId ||
-    ingredientBatchesQuery.isLoading ||
-    productBatchesQuery.isLoading;
+  const activeListQuery = isIngredientTab
+    ? ingredientBatchesQuery
+    : productBatchesQuery;
 
-  const refreshing =
-    ingredientBatchesQuery.isFetching || productBatchesQuery.isFetching;
+  const loading = !centralKitchenId || activeListQuery.isLoading;
+  const refreshing = activeListQuery.isFetching;
+  const hasError = activeListQuery.isError;
 
   const handleRefresh = async () => {
-    await Promise.all([
-      ingredientBatchesQuery.refetch(),
-      productBatchesQuery.refetch(),
-    ]);
+    await activeListQuery.refetch();
   };
 
   const handleOpenAdjust = (batch: BatchRow) => {
@@ -168,11 +168,15 @@ const KitchenInventory: React.FC = () => {
     setRenameOpen(true);
   };
 
+  const resetSelection = () => {
+    setSelectedBatch(null);
+  };
+
   const handleCreateInbound = async (payload: {
     itemId: number;
     batchCode: string;
     quantity: number;
-    createdAtUtc: string;
+    expiredAt: string;
     reason?: string;
   }) => {
     if (!centralKitchenId) {
@@ -188,7 +192,7 @@ const KitchenInventory: React.FC = () => {
             ingredientId: payload.itemId,
             batchCode: payload.batchCode,
             quantity: payload.quantity,
-            createdAtUtc: payload.createdAtUtc,
+            expiredAt: payload.expiredAt,
             reason: payload.reason,
           },
         });
@@ -201,7 +205,7 @@ const KitchenInventory: React.FC = () => {
             productId: payload.itemId,
             batchCode: payload.batchCode,
             quantity: payload.quantity,
-            createdAtUtc: payload.createdAtUtc,
+            expiredAt: payload.expiredAt,
             reason: payload.reason,
           },
         });
@@ -229,18 +233,26 @@ const KitchenInventory: React.FC = () => {
       return;
     }
 
+    const normalizedPayload = {
+      ...payload,
+      deltaQuantity:
+        payload.type === "WASTE"
+          ? -Math.abs(payload.deltaQuantity)
+          : Math.abs(payload.deltaQuantity),
+    };
+
     try {
       if (selectedBatch && "ingredientId" in selectedBatch) {
         const res = await adjustIngredientBatch.mutateAsync({
           centralKitchenId,
-          payload,
+          payload: normalizedPayload,
         });
 
         toast.success(res.message || "Điều chỉnh lô nguyên liệu thành công.");
       } else if (selectedBatch && "productId" in selectedBatch) {
         const res = await adjustProductBatch.mutateAsync({
           centralKitchenId,
-          payload,
+          payload: normalizedPayload,
         });
 
         toast.success(res.message || "Điều chỉnh lô sản phẩm thành công.");
@@ -250,7 +262,7 @@ const KitchenInventory: React.FC = () => {
       }
 
       setAdjustOpen(false);
-      setSelectedBatch(null);
+      resetSelection();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Điều chỉnh lô hàng thất bại.";
@@ -287,7 +299,7 @@ const KitchenInventory: React.FC = () => {
       }
 
       setRenameOpen(false);
-      setSelectedBatch(null);
+      resetSelection();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Đổi mã lô thất bại.";
@@ -295,13 +307,20 @@ const KitchenInventory: React.FC = () => {
     }
   };
 
-  const handleDeleteBatch = async () => {
+  const handleDeleteBatch = async (reason: string) => {
     if (!centralKitchenId || !selectedBatch) {
       toast.error("Không xác định được lô cần xóa.");
       return;
     }
 
+    if (selectedBatch.quantity > 0) {
+      toast.error("Chỉ được xóa lô khi số lượng bằng 0.");
+      return;
+    }
+
     try {
+      console.log("Delete batch reason:", reason);
+
       if ("ingredientId" in selectedBatch) {
         const res = await deleteIngredientBatch.mutateAsync({
           centralKitchenId,
@@ -319,7 +338,7 @@ const KitchenInventory: React.FC = () => {
       }
 
       setDeleteOpen(false);
-      setSelectedBatch(null);
+      resetSelection();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Xóa lô hàng thất bại.";
@@ -327,95 +346,141 @@ const KitchenInventory: React.FC = () => {
     }
   };
 
+  const isCreating = isIngredientTab
+    ? createIngredientInbound.isPending
+    : createProductInbound.isPending;
+
+  const adjustingBatchId = adjustIngredientBatch.isPending
+    ? (adjustIngredientBatch.variables?.payload.batchId ?? null)
+    : adjustProductBatch.isPending
+      ? (adjustProductBatch.variables?.payload.batchId ?? null)
+      : null;
+
+  const deletingBatchId = deleteIngredientBatch.isPending
+    ? (deleteIngredientBatch.variables?.batchId ?? null)
+    : deleteProductBatch.isPending
+      ? (deleteProductBatch.variables?.batchId ?? null)
+      : null;
+
+  const renamingBatchId = renameIngredientBatchCode.isPending
+    ? (renameIngredientBatchCode.variables?.batchId ?? null)
+    : renameProductBatchCode.isPending
+      ? (renameProductBatchCode.variables?.batchId ?? null)
+      : null;
+
   return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="Tồn kho bếp trung tâm"
-        subtitle="Quản lý lô hàng tồn kho thực tế của nguyên liệu và sản phẩm"
-      />
+    <div className="space-y-6">
+      <PageHeader title="Tồn kho bếp trung tâm" />
+      <p className="text-sm text-muted-foreground">
+        Theo dõi lô nguyên liệu và thành phẩm tại bếp trung tâm.
+      </p>
 
-      <InventoryToolbar
-        search={search}
-        onSearchChange={setSearch}
-        activeTab={activeTab}
-        onCreateInbound={() => setCreateOpen(true)}
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
-      />
-
-      <InventorySummaryCards
-        totalBatches={summary.totalBatches}
-        totalQuantity={summary.totalQuantity}
-        expiringSoonCount={summary.expiringSoonCount}
-        totalItems={totalItems}
-      />
-
-      <Tabs value={activeTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as KitchenInventoryTab)}
+      >
         <InventoryTabs value={activeTab} onChange={setActiveTab} />
 
-        <TabsContent value="INGREDIENT">
-          {filteredData.length === 0 && !loading ? (
+        <InventoryToolbar
+          search={search}
+          onSearchChange={setSearch}
+          activeTab={activeTab}
+          onCreateInbound={() => setCreateOpen(true)}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+        />
+
+        <TabsContent value="INGREDIENT" forceMount hidden={!isIngredientTab}>
+          {!centralKitchenId ? (
             <EmptyInventoryState
-              title="Chưa có lô nguyên liệu"
-              description="Hãy tạo lô nguyên liệu đầu tiên để bắt đầu quản lý tồn kho."
+              title="Không xác định được bếp trung tâm"
+              description="Vui lòng đăng nhập lại hoặc kiểm tra dữ liệu người dùng hiện tại."
+            />
+          ) : hasError ? (
+            <EmptyInventoryState
+              title="Không tải được dữ liệu tồn kho"
+              description="Đã có lỗi khi lấy danh sách lô nguyên liệu. Hãy thử làm mới lại."
+            />
+          ) : filteredData.length === 0 && !loading ? (
+            <EmptyInventoryState
+              title={
+                search
+                  ? "Không tìm thấy lô nguyên liệu"
+                  : "Chưa có lô nguyên liệu"
+              }
+              description={
+                search
+                  ? "Hãy thử từ khóa khác."
+                  : "Hãy tạo lô nguyên liệu đầu tiên để bắt đầu quản lý tồn kho."
+              }
             />
           ) : (
-            <InventoryBatchTable
-              data={filteredData}
-              loading={loading}
-              adjustingBatchId={
-                adjustIngredientBatch.variables?.payload.batchId ??
-                adjustProductBatch.variables?.payload.batchId ??
-                null
-              }
-              deletingBatchId={
-                deleteIngredientBatch.variables?.batchId ??
-                deleteProductBatch.variables?.batchId ??
-                null
-              }
-              renamingBatchId={
-                renameIngredientBatchCode.variables?.batchId ??
-                renameProductBatchCode.variables?.batchId ??
-                null
-              }
-              onViewDetail={handleOpenDetail}
-              onRename={handleOpenRename}
-              onAdjust={handleOpenAdjust}
-              onDelete={handleOpenDelete}
-            />
+            <>
+              <InventorySummaryCards
+                totalBatches={summary.totalBatches}
+                totalQuantity={summary.totalQuantity}
+                expiringSoonCount={summary.expiringSoonCount}
+                totalItems={totalItems}
+              />
+
+              <InventoryBatchTable
+                data={filteredData}
+                loading={loading}
+                adjustingBatchId={adjustingBatchId}
+                deletingBatchId={deletingBatchId}
+                renamingBatchId={renamingBatchId}
+                onViewDetail={handleOpenDetail}
+                onRename={handleOpenRename}
+                onAdjust={handleOpenAdjust}
+                onDelete={handleOpenDelete}
+              />
+            </>
           )}
         </TabsContent>
 
-        <TabsContent value="PRODUCT">
-          {filteredData.length === 0 && !loading ? (
+        <TabsContent value="PRODUCT" forceMount hidden={isIngredientTab}>
+          {!centralKitchenId ? (
             <EmptyInventoryState
-              title="Chưa có lô sản phẩm"
-              description="Hãy tạo lô sản phẩm đầu tiên để bắt đầu quản lý tồn kho."
+              title="Không xác định được bếp trung tâm"
+              description="Vui lòng đăng nhập lại hoặc kiểm tra dữ liệu người dùng hiện tại."
+            />
+          ) : hasError ? (
+            <EmptyInventoryState
+              title="Không tải được dữ liệu tồn kho"
+              description="Đã có lỗi khi lấy danh sách lô sản phẩm. Hãy thử làm mới lại."
+            />
+          ) : filteredData.length === 0 && !loading ? (
+            <EmptyInventoryState
+              title={
+                search ? "Không tìm thấy lô sản phẩm" : "Chưa có lô sản phẩm"
+              }
+              description={
+                search
+                  ? "Hãy thử từ khóa khác."
+                  : "Hãy tạo lô sản phẩm đầu tiên để bắt đầu quản lý tồn kho."
+              }
             />
           ) : (
-            <InventoryBatchTable
-              data={filteredData}
-              loading={loading}
-              adjustingBatchId={
-                adjustIngredientBatch.variables?.payload.batchId ??
-                adjustProductBatch.variables?.payload.batchId ??
-                null
-              }
-              deletingBatchId={
-                deleteIngredientBatch.variables?.batchId ??
-                deleteProductBatch.variables?.batchId ??
-                null
-              }
-              renamingBatchId={
-                renameIngredientBatchCode.variables?.batchId ??
-                renameProductBatchCode.variables?.batchId ??
-                null
-              }
-              onViewDetail={handleOpenDetail}
-              onRename={handleOpenRename}
-              onAdjust={handleOpenAdjust}
-              onDelete={handleOpenDelete}
-            />
+            <>
+              <InventorySummaryCards
+                totalBatches={summary.totalBatches}
+                totalQuantity={summary.totalQuantity}
+                expiringSoonCount={summary.expiringSoonCount}
+                totalItems={totalItems}
+              />
+
+              <InventoryBatchTable
+                data={filteredData}
+                loading={loading}
+                adjustingBatchId={adjustingBatchId}
+                deletingBatchId={deletingBatchId}
+                renamingBatchId={renamingBatchId}
+                onViewDetail={handleOpenDetail}
+                onRename={handleOpenRename}
+                onAdjust={handleOpenAdjust}
+                onDelete={handleOpenDelete}
+              />
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -431,9 +496,7 @@ const KitchenInventory: React.FC = () => {
         optionsError={
           ingredientOptionsQuery.isError || productOptionsQuery.isError
         }
-        submitting={
-          createIngredientInbound.isPending || createProductInbound.isPending
-        }
+        submitting={isCreating}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreateInbound}
       />
@@ -441,10 +504,12 @@ const KitchenInventory: React.FC = () => {
       <AdjustBatchModal
         open={adjustOpen}
         batch={selectedBatch}
-        submitting={adjustIngredientBatch.isPending || adjustProductBatch.isPending}
+        submitting={
+          adjustIngredientBatch.isPending || adjustProductBatch.isPending
+        }
         onClose={() => {
           setAdjustOpen(false);
-          setSelectedBatch(null);
+          resetSelection();
         }}
         onSubmit={handleAdjustBatch}
       />
@@ -452,10 +517,12 @@ const KitchenInventory: React.FC = () => {
       <DeleteBatchConfirmDialog
         open={deleteOpen}
         batch={selectedBatch}
-        deleting={deleteIngredientBatch.isPending || deleteProductBatch.isPending}
+        deleting={
+          deleteIngredientBatch.isPending || deleteProductBatch.isPending
+        }
         onClose={() => {
           setDeleteOpen(false);
-          setSelectedBatch(null);
+          resetSelection();
         }}
         onConfirm={handleDeleteBatch}
       />
@@ -466,7 +533,7 @@ const KitchenInventory: React.FC = () => {
         batch={detailBatch}
         onClose={() => {
           setDetailOpen(false);
-          setSelectedBatch(null);
+          resetSelection();
         }}
       />
 
@@ -474,11 +541,12 @@ const KitchenInventory: React.FC = () => {
         open={renameOpen}
         batch={selectedBatch}
         submitting={
-          renameIngredientBatchCode.isPending || renameProductBatchCode.isPending
+          renameIngredientBatchCode.isPending ||
+          renameProductBatchCode.isPending
         }
         onClose={() => {
           setRenameOpen(false);
-          setSelectedBatch(null);
+          resetSelection();
         }}
         onSubmit={handleRenameBatchCode}
       />

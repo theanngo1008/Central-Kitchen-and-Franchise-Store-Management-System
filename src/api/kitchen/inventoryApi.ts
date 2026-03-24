@@ -77,20 +77,14 @@ export const inventoryApi = {
     ).data;
   },
 
-  getIngredientBatchDetail: async (
-    centralKitchenId: number,
-    batchId: number,
-  ) =>
+  getIngredientBatchDetail: async (centralKitchenId: number, batchId: number) =>
     (
       await adminApi.get<ApiResponse<IngredientBatch>>(
         `/central-kitchens/${centralKitchenId}/inventory/ingredients/batches/${batchId}`,
       )
     ).data,
 
-  getProductBatchDetail: async (
-    centralKitchenId: number,
-    batchId: number,
-  ) =>
+  getProductBatchDetail: async (centralKitchenId: number, batchId: number) =>
     (
       await adminApi.get<ApiResponse<ProductBatch>>(
         `/central-kitchens/${centralKitchenId}/inventory/products/batches/${batchId}`,
@@ -165,20 +159,14 @@ export const inventoryApi = {
       )
     ).data,
 
-  deleteIngredientBatch: async (
-    centralKitchenId: number,
-    batchId: number,
-  ) =>
+  deleteIngredientBatch: async (centralKitchenId: number, batchId: number) =>
     (
       await adminApi.delete<ApiResponse<string>>(
         `/central-kitchens/${centralKitchenId}/inventory/ingredients/batches/${batchId}`,
       )
     ).data,
 
-  deleteProductBatch: async (
-    centralKitchenId: number,
-    batchId: number,
-  ) =>
+  deleteProductBatch: async (centralKitchenId: number, batchId: number) =>
     (
       await adminApi.delete<ApiResponse<string>>(
         `/central-kitchens/${centralKitchenId}/inventory/products/batches/${batchId}`,

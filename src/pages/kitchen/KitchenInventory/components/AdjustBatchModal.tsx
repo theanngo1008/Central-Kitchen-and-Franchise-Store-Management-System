@@ -23,10 +23,7 @@ import type {
   InventoryAdjustmentType,
   ProductBatch,
 } from "@/types/kitchen/inventoryBatch.types";
-import {
-  getBatchItemName,
-  INVENTORY_ADJUSTMENT_TYPE_OPTIONS,
-} from "../helpers";
+import { INVENTORY_ADJUSTMENT_TYPE_OPTIONS } from "../helpers";
 
 type BatchRow = IngredientBatch | ProductBatch;
 
@@ -58,12 +55,11 @@ const AdjustBatchModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (!open) return;
-
     setType("ADJUST");
     setDeltaQuantity("");
     setReason("");
     setReference("");
-  }, [open, batch?.batchId]);
+  }, [open, batch]);
 
   const quantityNumber = useMemo(() => Number(deltaQuantity), [deltaQuantity]);
 
@@ -74,22 +70,25 @@ const AdjustBatchModal: React.FC<Props> = ({
     !Number.isInteger(quantityNumber);
 
   const isWasteOverQuantity =
-    !!batch && type === "WASTE" && quantityNumber > batch.quantity;
+    !!batch &&
+    type === "WASTE" &&
+    !Number.isNaN(quantityNumber) &&
+    quantityNumber > batch.quantity;
 
   const isSubmitDisabled =
+    submitting ||
     !batch ||
-    !reason.trim() ||
     isInvalidQuantity ||
-    isWasteOverQuantity ||
-    submitting;
+    !reason.trim() ||
+    isWasteOverQuantity;
 
   const handleSubmit = async () => {
     if (!batch || isSubmitDisabled) return;
 
     await onSubmit({
-      batchId: Number(batch.batchId),
+      batchId: batch.batchId,
       type,
-      deltaQuantity: Number(quantityNumber),
+      deltaQuantity: quantityNumber,
       reason: reason.trim(),
       reference: reference.trim() || undefined,
     });
@@ -97,16 +96,19 @@ const AdjustBatchModal: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Điều chỉnh lô hàng</DialogTitle>
         </DialogHeader>
 
-        {!batch ? null : (
+        {!batch ? (
+          <div className="py-6 text-sm text-muted-foreground">
+            Không có dữ liệu lô cần điều chỉnh.
+          </div>
+        ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-              <p className="font-medium">{getBatchItemName(batch)}</p>
-              <p className="text-muted-foreground">Mã lô: {batch.batchCode}</p>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="font-medium">{batch.batchCode}</p>
               <p className="text-muted-foreground">
                 Số lượng hiện tại: {batch.quantity} {batch.unit}
               </p>
@@ -143,6 +145,11 @@ const AdjustBatchModal: React.FC<Props> = ({
                 onChange={(e) => setDeltaQuantity(e.target.value)}
                 placeholder="Nhập số lượng"
               />
+              {isInvalidQuantity ? (
+                <p className="text-sm text-destructive">
+                  Số lượng phải là số nguyên dương.
+                </p>
+              ) : null}
               {isWasteOverQuantity ? (
                 <p className="text-sm text-destructive">
                   Số lượng hao hụt không được vượt quá tồn hiện tại.

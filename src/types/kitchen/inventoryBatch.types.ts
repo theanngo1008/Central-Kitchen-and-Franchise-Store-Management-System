@@ -40,7 +40,7 @@ export interface CreateIngredientInboundPayload {
   ingredientId: number;
   batchCode: string;
   quantity: number;
-  createdAtUtc: string;
+  expiredAt: string;
   reason?: string;
 }
 
@@ -48,7 +48,7 @@ export interface CreateProductInboundPayload {
   productId: number;
   batchCode: string;
   quantity: number;
-  createdAtUtc: string;
+  expiredAt: string;
   reason?: string;
 }
 

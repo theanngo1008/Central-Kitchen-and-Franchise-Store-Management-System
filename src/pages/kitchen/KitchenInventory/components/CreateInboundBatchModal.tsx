@@ -38,15 +38,14 @@ type Props = {
     itemId: number;
     batchCode: string;
     quantity: number;
-    createdAtUtc: string;
+    expiredAt: string;
     reason?: string;
   }) => void | Promise<void>;
 };
 
-const toLocalDateTimeInputValue = () => {
+const toDateInputValue = () => {
   const now = new Date();
-  const tzOffset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+  return now.toISOString().slice(0, 10);
 };
 
 const CreateInboundBatchModal: React.FC<Props> = ({
@@ -63,19 +62,21 @@ const CreateInboundBatchModal: React.FC<Props> = ({
   const [itemId, setItemId] = useState("");
   const [batchCode, setBatchCode] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [createdAt, setCreatedAt] = useState(toLocalDateTimeInputValue());
+  const [expiredAt, setExpiredAt] = useState(toDateInputValue());
   const [reason, setReason] = useState("");
 
   useEffect(() => {
     if (!open) return;
+
     setItemId("");
     setBatchCode("");
     setQuantity("");
-    setCreatedAt(toLocalDateTimeInputValue());
+    setExpiredAt(toDateInputValue());
     setReason("");
   }, [open, activeTab]);
 
-  const options = activeTab === "INGREDIENT" ? ingredientOptions : productOptions;
+  const options =
+    activeTab === "INGREDIENT" ? ingredientOptions : productOptions;
 
   const quantityNumber = useMemo(() => Number(quantity), [quantity]);
 
@@ -94,7 +95,7 @@ const CreateInboundBatchModal: React.FC<Props> = ({
     hasNoOptions ||
     !itemId ||
     !batchCode.trim() ||
-    !createdAt ||
+    !expiredAt ||
     isInvalidQuantity;
 
   const handleSubmit = async () => {
@@ -104,43 +105,41 @@ const CreateInboundBatchModal: React.FC<Props> = ({
       itemId: Number(itemId),
       batchCode: batchCode.trim(),
       quantity: Number(quantityNumber),
-      createdAtUtc: new Date(createdAt).toISOString(),
+      expiredAt: new Date(expiredAt).toISOString(),
       reason: reason.trim() || undefined,
     });
   };
+
+  const itemLabel = activeTab === "INGREDIENT" ? "Nguyên liệu" : "Sản phẩm";
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {activeTab === "INGREDIENT" ? "Nhập lô nguyên liệu" : "Nhập lô sản phẩm"}
+            {activeTab === "INGREDIENT"
+              ? "Nhập lô nguyên liệu"
+              : "Nhập lô sản phẩm"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>{activeTab === "INGREDIENT" ? "Nguyên liệu" : "Sản phẩm"}</Label>
-
+            <Label>{itemLabel}</Label>
             <Select
               value={itemId}
               onValueChange={setItemId}
-              disabled={loadingOptions || optionsError || hasNoOptions}
+              disabled={loadingOptions || hasNoOptions}
             >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
                     loadingOptions
-                      ? "Đang tải dữ liệu..."
-                      : optionsError
-                        ? "Không tải được danh sách mặt hàng"
-                        : hasNoOptions
-                          ? "Không có mặt hàng khả dụng"
-                          : "Chọn mặt hàng"
+                      ? "Đang tải danh sách..."
+                      : `Chọn ${itemLabel.toLowerCase()}`
                   }
                 />
               </SelectTrigger>
-
               <SelectContent>
                 {options.map((option) => (
                   <SelectItem key={option.value} value={String(option.value)}>
@@ -152,30 +151,31 @@ const CreateInboundBatchModal: React.FC<Props> = ({
 
             {optionsError ? (
               <p className="text-sm text-destructive">
-                Không có quyền tải danh sách mặt hàng. BE đang trả 403 cho danh sách{" "}
-                {activeTab === "INGREDIENT" ? "nguyên liệu" : "sản phẩm"}.
+                Không tải được danh sách lựa chọn.
               </p>
             ) : null}
 
             {hasNoOptions ? (
               <p className="text-sm text-muted-foreground">
-                Hiện chưa có mặt hàng nào khả dụng để nhập lô.
+                Chưa có dữ liệu để tạo lô mới.
               </p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label>Mã lô</Label>
+            <Label htmlFor="batchCode">Mã lô</Label>
             <Input
+              id="batchCode"
               value={batchCode}
               onChange={(e) => setBatchCode(e.target.value)}
-              placeholder="Nhập mã lô"
+              placeholder="Ví dụ: LO-ING-20260324-01"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Số lượng</Label>
+            <Label htmlFor="quantity">Số lượng</Label>
             <Input
+              id="quantity"
               type="number"
               min={1}
               step={1}
@@ -183,29 +183,31 @@ const CreateInboundBatchModal: React.FC<Props> = ({
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Nhập số lượng"
             />
-            {isInvalidQuantity && quantity.trim() ? (
+            {isInvalidQuantity ? (
               <p className="text-sm text-destructive">
-                Số lượng phải là số nguyên lớn hơn 0.
+                Số lượng phải là số nguyên dương.
               </p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label>Ngày tạo lô</Label>
+            <Label htmlFor="expiredAt">Hạn sử dụng</Label>
             <Input
-              type="datetime-local"
-              value={createdAt}
-              onChange={(e) => setCreatedAt(e.target.value)}
+              id="expiredAt"
+              type="date"
+              value={expiredAt}
+              onChange={(e) => setExpiredAt(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Lý do nhập kho</Label>
+            <Label htmlFor="reason">Ghi chú</Label>
             <Textarea
+              id="reason"
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Nhập lý do nhập kho..."
+              placeholder="Ví dụ: nhập kho đầu ngày, nhận từ NCC..."
             />
           </div>
 
