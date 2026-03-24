@@ -33,6 +33,8 @@ import {
   getPartiallyForwardedItems,
   getDroppedItems,
   hasPartialOrDroppedItems,
+  hasForwardSnapshotWarning,
+  getForwardSnapshotWarnings,
 } from "@/helpers/incomingOrderHelpers";
 
 type Props = {
@@ -123,6 +125,16 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
     [order],
   );
 
+  const hasSnapshotWarning = useMemo(
+    () => (order ? hasForwardSnapshotWarning(order) : false),
+    [order],
+  );
+
+  const snapshotWarnings = useMemo(
+    () => (order ? getForwardSnapshotWarnings(order) : []),
+    [order],
+  );
+
   if (!open) return null;
 
   const canEditProcessingNote = order
@@ -171,7 +183,6 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
           </div>
         ) : (
           <div className="space-y-5">
-            {/* Alert nếu có hàng partial/dropped */}
             {hasPartialOrDropped && (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
                 <div className="flex gap-3">
@@ -189,6 +200,30 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
               </div>
             )}
 
+            {hasSnapshotWarning ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="w-full">
+                    <h3 className="font-semibold text-amber-900">
+                      Có dữ liệu forward cũ cần lưu ý
+                    </h3>
+                    {snapshotWarnings.length > 0 ? (
+                      <ul className="mt-2 list-disc pl-5 text-sm text-amber-800 space-y-1">
+                        {snapshotWarnings.map((warning, index) => (
+                          <li key={`${warning}-${index}`}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1 text-sm text-amber-800">
+                        Hệ thống đang dùng giá trị đã chuẩn hóa để hiển thị.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Cửa hàng</p>
@@ -203,6 +238,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                   )}
                 </div>
               </div>
+
               <div>
                 <p className="text-muted-foreground">Trạng thái</p>
                 <StatusBadge status={order.status} />
@@ -253,8 +289,8 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
               </div>
 
               {order.storeNote && (
-                <div className="col-span-2 mt-2 p-3 bg-muted/30 rounded-lg border border-dashed">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
+                <div className="col-span-2 mt-2 rounded-lg border border-dashed bg-muted/30 p-3">
+                  <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
                     Ghi chú từ Cửa hàng
                   </p>
                   <p className="text-sm italic">"{order.storeNote}"</p>
@@ -310,23 +346,15 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
 
             {shouldShowForwardSection && (
               <div className="border-t pt-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="font-medium">Chuyển sang Cung ứng</p>
-                  {order.forwardedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      Đã chuyển lúc {formatDateTime(order.forwardedAt)}
-                      {order.forwardedBy ? ` bởi ${order.forwardedBy}` : ""}
-                    </span>
-                  )}
-                </div>
+                <p className="mb-3 font-medium">Chuyển sang Cung ứng</p>
 
-                {canForwardByStatus ? (
+                {order.status === "RECEIVED_BY_KITCHEN" ? (
                   <div className="space-y-3">
                     <Textarea
                       value={forwardNoteValue}
                       onChange={(e) => setForwardNoteValue(e.target.value)}
-                      placeholder="Nhập ghi chú khi chuyển đơn sang Cung ứng..."
-                      disabled={forwardingToSupply}
+                      placeholder="Nhập ghi chú khi chuyển sang Cung ứng..."
+                      disabled={forwardingToSupply || !canForwardToSupply}
                       rows={3}
                     />
 
@@ -460,16 +488,16 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
               )}
             </div>
 
-            {/* Dropped Items Section */}
             {droppedItems.length > 0 && (
               <div className="border-t pt-4">
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={16} className="text-destructive" />
                     <p className="font-medium text-destructive">
-                      Mặt hàng bị HỦY (Tồn kho không đủ)
+                      Mặt hàng bị HỦY
                     </p>
                   </div>
+
                   <div className="space-y-2">
                     {droppedItems.map((item) => (
                       <div
@@ -485,11 +513,13 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                               </p>
                             )}
                           </div>
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+
+                          <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
                             <X size={12} />
                             Bị hủy
                           </span>
                         </div>
+
                         <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                           <div className="rounded-md bg-muted/50 p-2">
                             <p className="text-muted-foreground">Cần gửi</p>
@@ -497,6 +527,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                               {item.quantity} {item.unit}
                             </p>
                           </div>
+
                           <div className="rounded-md bg-muted/50 p-2">
                             <p className="text-muted-foreground">Hủy</p>
                             <p className="font-medium text-destructive">
@@ -505,11 +536,20 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                             </p>
                           </div>
                         </div>
-                        {item.dropReason && (
+
+                        {item.dropReason ? (
                           <p className="mt-2 text-xs text-muted-foreground">
                             Lý do: {item.dropReason}
                           </p>
-                        )}
+                        ) : null}
+
+                        {item.hasForwardSnapshot === true &&
+                        item.isForwardSnapshotConsistent === false ? (
+                          <p className="mt-2 text-xs text-amber-600">
+                            {item.forwardSnapshotWarning ||
+                              "Dữ liệu forward cũ không còn đồng nhất, hệ thống đang dùng giá trị đã chuẩn hóa."}
+                          </p>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -517,7 +557,6 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Partial Items Section */}
             {partialItems.length > 0 && (
               <div className="border-t pt-4">
                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 space-y-3">
@@ -527,6 +566,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                       Mặt hàng được gửi một phần
                     </p>
                   </div>
+
                   <div className="space-y-2">
                     {partialItems.map((item) => (
                       <div
@@ -542,11 +582,13 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                               </p>
                             )}
                           </div>
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+
+                          <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
                             <PackageCheck size={12} />
                             Một phần
                           </span>
                         </div>
+
                         <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                           <div className="rounded-md bg-muted/50 p-2">
                             <p className="text-muted-foreground">Cần gửi</p>
@@ -554,21 +596,40 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                               {item.quantity} {item.unit}
                             </p>
                           </div>
+
                           <div className="rounded-md bg-muted/50 p-2">
-                            <p className="text-muted-foreground">Sẽ gửi</p>
+                            <p className="text-muted-foreground">Đã forward</p>
                             <p className="font-medium text-yellow-600">
-                              {item.forwardedQuantity} {item.unit}
+                              {item.forwardedQuantity ?? 0} {item.unit}
                             </p>
                           </div>
+
                           <div className="rounded-md bg-muted/50 p-2">
-                            <p className="text-muted-foreground">Thiếu</p>
+                            <p className="text-muted-foreground">
+                              Thiếu / drop
+                            </p>
                             <p className="font-medium text-destructive">
-                              {(item.quantity ?? 0) -
-                                (item.forwardedQuantity ?? 0)}{" "}
+                              {item.droppedQuantity ??
+                                (item.quantity ?? 0) -
+                                  (item.forwardedQuantity ?? 0)}{" "}
                               {item.unit}
                             </p>
                           </div>
                         </div>
+
+                        {item.dropReason ? (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Lý do: {item.dropReason}
+                          </p>
+                        ) : null}
+
+                        {item.hasForwardSnapshot === true &&
+                        item.isForwardSnapshotConsistent === false ? (
+                          <p className="mt-2 text-xs text-amber-600">
+                            {item.forwardSnapshotWarning ||
+                              "Dữ liệu forward cũ không còn đồng nhất, hệ thống đang dùng giá trị đã chuẩn hóa."}
+                          </p>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -596,26 +657,34 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
 
                   const isDropped =
                     item.isDroppedFromForward === true ||
+                    (item.droppedQuantity ?? 0) > 0 ||
                     item.isDropped === true;
 
+                  const forwardedQty = item.forwardedQuantity ?? 0;
+                  const droppedQty = item.droppedQuantity ?? 0;
+
                   const hasForwardResult =
-                    typeof item.forwardedQuantity === "number" || isDropped;
+                    item.hasForwardSnapshot === true ||
+                    forwardedQty > 0 ||
+                    droppedQty > 0 ||
+                    item.isDroppedFromForward === true;
 
                   const isPartial =
-                    typeof item.forwardedQuantity === "number" &&
-                    item.forwardedQuantity > 0 &&
-                    item.forwardedQuantity < requestedQty;
+                    forwardedQty > 0 && forwardedQty < requestedQty;
 
                   const isFull =
-                    typeof item.forwardedQuantity === "number" &&
-                    item.forwardedQuantity === requestedQty;
+                    requestedQty > 0 && forwardedQty === requestedQty;
 
                   const itemState = hasForwardResult
                     ? isDropped
                       ? "DROPPED"
                       : isPartial
                         ? "PARTIAL"
-                        : "FULL"
+                        : isFull
+                          ? "FULL"
+                          : isEnough
+                            ? "SUFFICIENT"
+                            : "INSUFFICIENT"
                     : isEnough
                       ? "SUFFICIENT"
                       : "INSUFFICIENT";
@@ -690,7 +759,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
 
                           <div className="rounded-md bg-background p-2">
                             <p className="text-muted-foreground">
-                              Tồn kho tại Bếp Trung Tâm
+                              Tồn kho khả dụng tại Bếp Trung Tâm
                             </p>
                             <p
                               className={`font-medium ${
@@ -703,6 +772,18 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                         </div>
                       )}
 
+                      {hasItemCheckData && (
+                        <div className="mt-3 text-xs">
+                          {isEnough ? (
+                            <span className="text-emerald-600">Đủ tồn kho</span>
+                          ) : (
+                            <span className="text-red-600">
+                              Không đủ tồn kho
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {(isPartial || isDropped || isFull) && (
                         <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
                           <div className="rounded-md bg-background p-2">
@@ -711,27 +792,41 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                               {item.quantity} {item.unit}
                             </p>
                           </div>
+
                           <div className="rounded-md bg-background p-2">
-                            <p className="text-muted-foreground">Sẽ gửi</p>
+                            <p className="text-muted-foreground">Đã forward</p>
                             <p className="font-medium">
-                              {item.forwardedQuantity ?? item.quantity}{" "}
-                              {item.unit}
+                              {item.forwardedQuantity ?? 0} {item.unit}
                             </p>
                           </div>
+
                           <div className="rounded-md bg-background p-2">
-                            <p className="text-muted-foreground">Tồn kho</p>
+                            <p className="text-muted-foreground">Bị drop</p>
                             <p className="font-medium">
-                              {item.availableInCentralKitchenQuantity ?? 0}{" "}
-                              {item.unit}
+                              {item.droppedQuantity ?? 0} {item.unit}
                             </p>
                           </div>
                         </div>
                       )}
 
+                      {item.dropReason ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Lý do: {item.dropReason}
+                        </p>
+                      ) : null}
+
+                      {item.hasForwardSnapshot === true &&
+                      item.isForwardSnapshotConsistent === false ? (
+                        <p className="mt-2 text-xs text-amber-600">
+                          {item.forwardSnapshotWarning ||
+                            "Dữ liệu forward cũ không còn đồng nhất, hệ thống đang dùng giá trị đã chuẩn hóa."}
+                        </p>
+                      ) : null}
+
                       {item.availableCentralKitchenBatches?.length ? (
                         <div className="mt-3 space-y-2">
                           <p className="text-xs font-medium text-muted-foreground">
-                            Các lô còn tồn
+                            Các lô khả dụng
                           </p>
 
                           {item.availableCentralKitchenBatches.map((batch) => (
@@ -771,17 +866,19 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="flex flex-col border-t pt-4 font-semibold text-sm space-y-2">
+            <div className="flex flex-col space-y-2 border-t pt-4 text-sm font-semibold">
               <div className="flex justify-between">
                 <span>Tổng số lượng đặt</span>
                 <span>{order.totalQuantity || totalQty}</span>
               </div>
+
               {order.forwardedTotalQuantity > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Tổng số lượng giao</span>
                   <span>{order.forwardedTotalQuantity}</span>
                 </div>
               )}
+
               {order.droppedTotalQuantity > 0 && (
                 <div className="flex justify-between text-destructive">
                   <span>Tổng số lượng hủy</span>
