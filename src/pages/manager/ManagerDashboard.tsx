@@ -78,14 +78,36 @@ const ManagerDashboard: React.FC = () => {
   const formatPercent = (val: number) => `${(val * 100).toFixed(1)}%`;
 
   // Render order status pie chart
+  const ORDER_STATUS_MAP: Record<string, string> = {
+    DRAFT: 'Bản nháp',
+    SUBMITTED: 'Đã gửi',
+    RECEIVED_BY_KITCHEN: 'Bếp đã nhận',
+    FORWARDED_TO_SUPPLY: 'Chuyển Cung Ứng',
+    DELIVERED: 'Đã giao',
+    RECEIVED_BY_STORE: 'CH đã nhận',
+  };
+
+  const DELIVERY_STATUS_MAP: Record<string, string> = {
+    CONFIRMED: 'Đã xác nhận',
+    DELIVERED: 'Đã giao',
+    PENDING: 'Chờ xử lý',
+    CANCELLED: 'Đã hủy',
+  };
+
   const orderData = useMemo(() => {
     if (!data?.orderStatusSummary.byStatus) return [];
-    return Object.entries(data.orderStatusSummary.byStatus).map(([name, value]) => ({ name, value }));
+    return Object.entries(data.orderStatusSummary.byStatus).map(([name, value]) => ({ 
+      name: ORDER_STATUS_MAP[name] || name, 
+      value 
+    }));
   }, [data]);
 
   const deliveryData = useMemo(() => {
     if (!data?.deliveryStatusSummary.byStatus) return [];
-    return Object.entries(data.deliveryStatusSummary.byStatus).map(([name, value]) => ({ name, value }));
+    return Object.entries(data.deliveryStatusSummary.byStatus).map(([name, value]) => ({ 
+      name: DELIVERY_STATUS_MAP[name] || name, 
+      value 
+    }));
   }, [data]);
 
   if (isLoading) {

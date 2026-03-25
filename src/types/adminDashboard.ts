@@ -1,3 +1,9 @@
+export interface CentralKitchenSummary {
+    total: number;
+    active: number;
+    inactive: number;
+}
+
 export interface FranchiseSummary {
     total: number;
     active: number;
@@ -17,6 +23,13 @@ export interface RbacSummary {
     permissionActiveCount: number;
     permissionInactiveCount: number;
     rolePermissionLinkCount: number;
+}
+
+export interface AdminOperationalSnapshotSummary {
+    openStoreOrdersCount: number;
+    activeProductionPlansCount: number;
+    openDeliveriesCount: number;
+    pendingReceivingCount: number;
 }
 
 export interface TopAction {
@@ -50,6 +63,7 @@ export interface DataFreshness {
     latestAuditLogAtUtc: string | null;
     latestUserUpdatedAtUtc: string | null;
     latestFranchiseUpdatedAtUtc: string | null;
+    latestCentralKitchenUpdatedAtUtc: string | null;
     latestStoreOrderAtUtc: string | null;
     latestDeliveryAtUtc: string | null;
     latestProductionPlanAtUtc: string | null;
@@ -61,9 +75,11 @@ export interface AdminDashboardOverview {
     toDate: string;
     timezoneOffsetMinutes: number;
 
+    centralKitchenSummary: CentralKitchenSummary;
     franchiseSummary: FranchiseSummary;
     userSummary: UserSummary;
     rbacSummary: RbacSummary;
+    operationalSnapshot: AdminOperationalSnapshotSummary;
     auditActivity: AuditActivitySummary;
 
     storeOrders: WorkloadSummary;

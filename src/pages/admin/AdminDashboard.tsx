@@ -167,14 +167,41 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Operational Snapshot */}
+      <div className="bg-card rounded-xl border p-4 flex flex-wrap gap-4 justify-around text-center items-center mb-6">
+          <div className="flex-1 min-w-[150px]">
+            <p className="text-sm text-muted-foreground">Đơn Đặt Mở</p>
+            <p className="text-3xl font-bold text-primary">{data.operationalSnapshot.openStoreOrdersCount}</p>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <p className="text-sm text-muted-foreground">KH Sản Xuất Active</p>
+            <p className="text-3xl font-bold text-warning">{data.operationalSnapshot.activeProductionPlansCount}</p>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <p className="text-sm text-muted-foreground">Chuyến Giao Mở</p>
+            <p className="text-3xl font-bold text-info">{data.operationalSnapshot.openDeliveriesCount}</p>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <p className="text-sm text-muted-foreground">Chờ Xác Nhận Nhận</p>
+            <p className="text-3xl font-bold text-success">{data.operationalSnapshot.pendingReceivingCount}</p>
+          </div>
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
-          title="Tổng Cửa hàng / Bếp" 
+          title="Cửa hàng / Store" 
           value={data.franchiseSummary.total.toString()} 
           subtitle={`${data.franchiseSummary.active} Hoạt động | ${data.franchiseSummary.inactive} Vô hiệu`} 
           icon={Store} 
           variant="success" 
+        />
+        <MetricCard 
+          title="Bếp Trung Tâm / CK" 
+          value={data.centralKitchenSummary.total.toString()} 
+          subtitle={`${data.centralKitchenSummary.active} Hoạt động | ${data.centralKitchenSummary.inactive} Vô hiệu`} 
+          icon={Store} 
+          variant="warning" 
         />
         <MetricCard 
           title="Hồ sơ tài khoản" 
@@ -184,7 +211,7 @@ const AdminDashboard: React.FC = () => {
           variant="primary" 
         />
         <MetricCard 
-          title="RBAC: Phân quyền" 
+          title="Phân quyền (RBAC)" 
           value={data.rbacSummary.roleActiveCount.toString()} 
           subtitle={`${data.rbacSummary.permissionActiveCount} Nhóm quyền | ${data.rbacSummary.rolePermissionLinkCount} Liên kết`} 
           icon={Shield} 
@@ -273,6 +300,10 @@ const AdminDashboard: React.FC = () => {
             <div className="p-4 bg-card">
               <p className="text-xs text-muted-foreground mb-1">Thiết lập Cửa hàng (Franchises)</p>
               <p className="font-medium text-sm">{formatDateTime(data.dataFreshness.latestFranchiseUpdatedAtUtc)}</p>
+            </div>
+            <div className="p-4 bg-card">
+              <p className="text-xs text-muted-foreground mb-1">Thiết lập Bếp trung tâm (CK)</p>
+              <p className="font-medium text-sm">{formatDateTime(data.dataFreshness.latestCentralKitchenUpdatedAtUtc)}</p>
             </div>
             <div className="p-4 bg-card">
               <p className="text-xs text-muted-foreground mb-1">Cập nhật Tài khoản (Users)</p>
