@@ -23,18 +23,35 @@ export const kitchenInventoryKeys = {
   ingredientBatches: (
     centralKitchenId: number,
     params?: IngredientBatchListParams,
-  ) => ["kitchenInventory", "ingredientBatches", centralKitchenId, params] as const,
+  ) =>
+    [
+      "kitchenInventory",
+      "ingredientBatches",
+      centralKitchenId,
+      params,
+    ] as const,
 
   productBatches: (
     centralKitchenId: number,
     params?: ProductBatchListParams,
-  ) => ["kitchenInventory", "productBatches", centralKitchenId, params] as const,
+  ) =>
+    ["kitchenInventory", "productBatches", centralKitchenId, params] as const,
 
   ingredientBatchDetail: (centralKitchenId: number, batchId: number) =>
-    ["kitchenInventory", "ingredientBatchDetail", centralKitchenId, batchId] as const,
+    [
+      "kitchenInventory",
+      "ingredientBatchDetail",
+      centralKitchenId,
+      batchId,
+    ] as const,
 
   productBatchDetail: (centralKitchenId: number, batchId: number) =>
-    ["kitchenInventory", "productBatchDetail", centralKitchenId, batchId] as const,
+    [
+      "kitchenInventory",
+      "productBatchDetail",
+      centralKitchenId,
+      batchId,
+    ] as const,
 
   ingredients: ["kitchenInventory", "ingredients"] as const,
   products: ["kitchenInventory", "products"] as const,
@@ -127,7 +144,7 @@ export const useIngredients = () => {
       const res = await getIngredients({
         status: "ACTIVE",
         page: 1,
-        pageSize: 1000,
+        pageSize: 200,
       });
 
       return res.data?.items ?? [];
@@ -142,7 +159,7 @@ export const useProducts = () => {
       const res = await getProducts({
         status: "ACTIVE",
         page: 1,
-        pageSize: 1000,
+        pageSize: 200,
       });
 
       return res.data?.items ?? [];
@@ -170,6 +187,7 @@ export const useIngredientOptions = () => {
     isEmpty: !query.isLoading && !query.isError && options.length === 0,
   };
 };
+
 export const useProductOptions = () => {
   const query = useProducts();
 
@@ -205,7 +223,11 @@ export const useCreateIngredientInboundBatch = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "ingredientBatches",
+          variables.centralKitchenId,
+        ],
       });
     },
   });
@@ -225,7 +247,11 @@ export const useCreateProductInboundBatch = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "productBatches",
+          variables.centralKitchenId,
+        ],
       });
     },
   });
@@ -245,7 +271,11 @@ export const useAdjustIngredientBatch = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "ingredientBatches",
+          variables.centralKitchenId,
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: kitchenInventoryKeys.ingredientBatchDetail(
@@ -271,7 +301,11 @@ export const useAdjustProductBatch = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "productBatches",
+          variables.centralKitchenId,
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: kitchenInventoryKeys.productBatchDetail(
@@ -299,7 +333,11 @@ export const useRenameIngredientBatchCode = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "ingredientBatches",
+          variables.centralKitchenId,
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: kitchenInventoryKeys.ingredientBatchDetail(
@@ -327,7 +365,11 @@ export const useRenameProductBatchCode = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "productBatches",
+          variables.centralKitchenId,
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: kitchenInventoryKeys.productBatchDetail(
@@ -353,7 +395,11 @@ export const useDeleteIngredientBatch = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "ingredientBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "ingredientBatches",
+          variables.centralKitchenId,
+        ],
       });
       queryClient.removeQueries({
         queryKey: kitchenInventoryKeys.ingredientBatchDetail(
@@ -379,7 +425,11 @@ export const useDeleteProductBatch = () => {
 
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["kitchenInventory", "productBatches", variables.centralKitchenId],
+        queryKey: [
+          "kitchenInventory",
+          "productBatches",
+          variables.centralKitchenId,
+        ],
       });
       queryClient.removeQueries({
         queryKey: kitchenInventoryKeys.productBatchDetail(

@@ -49,10 +49,9 @@ const getLocalDateString = () => {
   return local.toISOString().slice(0, 10);
 };
 
-const toUtcISOStringFromLocalDate = (dateValue: string) => {
-  const [year, month, day] = dateValue.split("-").map(Number);
-  const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-  return localDate.toISOString();
+const toUtcISOStringFromLocalDate = (dateString: string) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0)).toISOString();
 };
 
 const CreateInboundBatchModal: React.FC<Props> = ({
@@ -72,74 +71,84 @@ const CreateInboundBatchModal: React.FC<Props> = ({
   const [createdAt, setCreatedAt] = useState(getLocalDateString());
   const [reason, setReason] = useState("");
 
+  const [itemTouched, setItemTouched] = useState(false);
+  const [batchCodeTouched, setBatchCodeTouched] = useState(false);
   const [quantityTouched, setQuantityTouched] = useState(false);
-  const [dateTouched, setDateTouched] = useState(false);
+  const [createdAtTouched, setCreatedAtTouched] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  const options = useMemo(
+    () => (activeTab === "INGREDIENT" ? ingredientOptions : productOptions),
+    [activeTab, ingredientOptions, productOptions],
+  );
 
+  const quantityNumber = Number(quantity);
+  const today = getLocalDateString();
+
+  const itemError =
+    !itemId.trim() ? "Vui lòng chọn mục cần nhập kho." : undefined;
+
+  const batchCodeError = !batchCode.trim()
+    ? "Vui lòng nhập mã lô."
+    : batchCode.trim().length > 100
+      ? "Mã lô không được vượt quá 100 ký tự."
+      : undefined;
+
+  const quantityError =
+    quantity.trim() === ""
+      ? "Vui lòng nhập số lượng."
+      : Number.isNaN(quantityNumber) || quantityNumber <= 0
+        ? "Số lượng phải lớn hơn 0."
+        : undefined;
+
+  const createdAtError = !createdAt
+    ? "Vui lòng chọn ngày tạo lô."
+    : createdAt > today
+      ? "Ngày tạo lô không được ở tương lai."
+      : undefined;
+
+  const resetForm = () => {
     setItemId("");
     setBatchCode("");
     setQuantity("");
     setCreatedAt(getLocalDateString());
     setReason("");
+
+    setItemTouched(false);
+    setBatchCodeTouched(false);
     setQuantityTouched(false);
-    setDateTouched(false);
+    setCreatedAtTouched(false);
+  };
+
+  useEffect(() => {
+    if (open) {
+      resetForm();
+    }
   }, [open, activeTab]);
 
-  const options =
-    activeTab === "INGREDIENT" ? ingredientOptions : productOptions;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const quantityNumber = useMemo(() => Number(quantity), [quantity]);
-  const today = getLocalDateString();
-
-  const isInvalidQuantity =
-    !quantity.trim() ||
-    Number.isNaN(quantityNumber) ||
-    quantityNumber <= 0 ||
-    !Number.isInteger(quantityNumber);
-
-  const showQuantityError = quantityTouched && isInvalidQuantity;
-
-  const isFutureCreatedAt = !!createdAt && createdAt > today;
-  const showDateError = dateTouched && isFutureCreatedAt;
-
-  const catalogLoadFailed =
-    !loadingOptions && optionsError && options.length === 0;
-
-  const hasNoOptions = !loadingOptions && !optionsError && options.length === 0;
-
-  const isDisabled =
-    submitting ||
-    loadingOptions ||
-    catalogLoadFailed ||
-    hasNoOptions ||
-    !itemId ||
-    !batchCode.trim() ||
-    !createdAt ||
-    isFutureCreatedAt ||
-    isInvalidQuantity;
-
-  const handleSubmit = async () => {
+    setItemTouched(true);
+    setBatchCodeTouched(true);
     setQuantityTouched(true);
-    setDateTouched(true);
+    setCreatedAtTouched(true);
 
-    if (isDisabled) return;
+    if (itemError || batchCodeError || quantityError || createdAtError) {
+      return;
+    }
 
     await onSubmit({
       itemId: Number(itemId),
-      batchCode: batchCode.trim(),
+      batchCode: batchCode.trim().toUpperCase(),
       quantity: quantityNumber,
       createdAtUtc: toUtcISOStringFromLocalDate(createdAt),
       reason: reason.trim() || undefined,
     });
   };
 
-  const itemLabel = activeTab === "INGREDIENT" ? "Nguyên liệu" : "Sản phẩm";
-
   return (
-    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {activeTab === "INGREDIENT"
@@ -148,20 +157,28 @@ const CreateInboundBatchModal: React.FC<Props> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>{itemLabel}</Label>
+            <Label>
+              {activeTab === "INGREDIENT" ? "Nguyên liệu" : "Sản phẩm"}
+            </Label>
+
             <Select
               value={itemId}
-              onValueChange={setItemId}
-              disabled={loadingOptions || catalogLoadFailed || hasNoOptions}
+              onValueChange={(value) => {
+                setItemId(value);
+                setItemTouched(true);
+              }}
+              disabled={loadingOptions || submitting}
             >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
                     loadingOptions
                       ? "Đang tải danh sách..."
-                      : `Chọn ${itemLabel.toLowerCase()}`
+                      : activeTab === "INGREDIENT"
+                        ? "Chọn nguyên liệu"
+                        : "Chọn sản phẩm"
                   }
                 />
               </SelectTrigger>
@@ -174,16 +191,20 @@ const CreateInboundBatchModal: React.FC<Props> = ({
               </SelectContent>
             </Select>
 
-            {catalogLoadFailed ? (
+            {optionsError ? (
               <p className="text-sm text-destructive">
                 Không tải được danh sách lựa chọn.
               </p>
             ) : null}
 
-            {hasNoOptions ? (
+            {!loadingOptions && !optionsError && options.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Chưa có dữ liệu để tạo lô mới.
+                Không có dữ liệu để lựa chọn.
               </p>
+            ) : null}
+
+            {itemTouched && itemError ? (
+              <p className="text-sm text-destructive">{itemError}</p>
             ) : null}
           </div>
 
@@ -193,8 +214,13 @@ const CreateInboundBatchModal: React.FC<Props> = ({
               id="batchCode"
               value={batchCode}
               onChange={(e) => setBatchCode(e.target.value)}
-              placeholder="Ví dụ: LO-ING-20260324-01"
+              onBlur={() => setBatchCodeTouched(true)}
+              placeholder="Ví dụ: BATCH-001"
+              disabled={submitting}
             />
+            {batchCodeTouched && batchCodeError ? (
+              <p className="text-sm text-destructive">{batchCodeError}</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -202,57 +228,55 @@ const CreateInboundBatchModal: React.FC<Props> = ({
             <Input
               id="quantity"
               type="number"
-              min={1}
-              step={1}
+              min="0"
+              step="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               onBlur={() => setQuantityTouched(true)}
               placeholder="Nhập số lượng"
+              disabled={submitting}
             />
-            {showQuantityError ? (
-              <p className="text-sm text-destructive">
-                Số lượng phải là số nguyên dương.
-              </p>
+            {quantityTouched && quantityError ? (
+              <p className="text-sm text-destructive">{quantityError}</p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="createdAt">Ngày nhập lô</Label>
+            <Label htmlFor="createdAt">Ngày tạo lô</Label>
             <Input
               id="createdAt"
               type="date"
               value={createdAt}
               max={today}
               onChange={(e) => setCreatedAt(e.target.value)}
-              onBlur={() => setDateTouched(true)}
+              onBlur={() => setCreatedAtTouched(true)}
+              disabled={submitting}
             />
-            {showDateError ? (
-              <p className="text-sm text-destructive">
-                Ngày nhập lô không được lớn hơn ngày hiện tại.
-              </p>
+            {createdAtTouched && createdAtError ? (
+              <p className="text-sm text-destructive">{createdAtError}</p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reason">Ghi chú</Label>
+            <Label htmlFor="reason">Lý do</Label>
             <Textarea
               id="reason"
-              rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ví dụ: nhập kho đầu ngày, nhận từ NCC..."
+              placeholder="Nhập lý do nhập kho (không bắt buộc)"
+              disabled={submitting}
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} disabled={submitting}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Hủy
             </Button>
-            <Button onClick={handleSubmit} disabled={isDisabled}>
-              {submitting ? "Đang tạo..." : "Tạo lô"}
+            <Button type="submit" disabled={submitting || loadingOptions}>
+              {submitting ? "Đang lưu..." : "Tạo lô"}
             </Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
