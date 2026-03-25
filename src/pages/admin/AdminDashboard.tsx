@@ -81,6 +81,22 @@ const AdminDashboard: React.FC = () => {
 
   if (!data) return null;
 
+  const AUDIT_ACTION_MAP: Record<string, string> = {
+    'STORE_ORDER_DELIVERY_STATUS_UPDATED': 'Cập nhật giao hàng',
+    'STORE_ORDER_CREATE': 'Tạo đơn hàng',
+    'STORE_ORDER_SUBMIT': 'Gửi đơn hàng',
+    'RECEIVING_CONFIRM': 'Xác nhận nhận hàng',
+    'STORE_ORDER_FORWARDED_TO_SUPPLY': 'Chuyển Cung ứng',
+    'STORE_ORDER_LOCK': 'Khóa đơn hàng',
+    'STORE_ORDER_PREPARED': 'Soạn đơn xong',
+    'STORE_ORDER_RECEIVED_BY_KITCHEN': 'Bếp tiếp nhận',
+  };
+
+  const topActionsData = data.auditActivity.topActions.map(action => ({
+    ...action,
+    name: AUDIT_ACTION_MAP[action.name] || action.name,
+  }));
+
   // Prepare workload chart data side-by-side
   const workloadData = [
     { 
@@ -248,9 +264,9 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="h-64">
-            {data.auditActivity.topActions.length > 0 ? (
+            {topActionsData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.auditActivity.topActions} layout="vertical">
+                <BarChart data={topActionsData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />

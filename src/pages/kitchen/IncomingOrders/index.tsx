@@ -2,6 +2,16 @@ import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import IncomingOrdersToolbar from "./components/IncomingOrdersToolbar";
 import IncomingOrdersTable from "./components/IncomingOrdersTable";
@@ -36,6 +46,7 @@ const IncomingOrdersPage: React.FC = () => {
     INCOMING_ORDER_DEFAULT_FILTER,
   );
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [confirmForwardAction, setConfirmForwardAction] = useState<{ order: IncomingOrder; note: string } | null>(null);
 
   const queryParams = useMemo<StoreOrderQuery>(
     () => ({
@@ -164,6 +175,10 @@ const IncomingOrdersPage: React.FC = () => {
         error?.response?.data?.message || "Failed to receive incoming order.",
       );
     }
+  };
+
+  const handleForwardOrderTrigger = (order: IncomingOrder, note: string = "") => {
+    setConfirmForwardAction({ order, note });
   };
 
   const handleForwardOrder = async (
@@ -318,7 +333,7 @@ const IncomingOrdersPage: React.FC = () => {
         }
         onViewDetail={handleViewDetail}
         onReceiveOrder={handleReceiveOrder}
-        onForwardOrder={handleForwardOrder}
+        onForwardOrder={handleForwardOrderTrigger}
       />
 
       <IncomingOrderDetailDialog
@@ -326,12 +341,38 @@ const IncomingOrdersPage: React.FC = () => {
         open={!!selectedOrderId}
         onClose={handleCloseDetail}
         onSaveProcessingNote={handleSaveProcessingNote}
-        onForwardToSupply={handleForwardOrder}
+        onForwardToSupply={handleForwardOrderTrigger}
         savingProcessingNote={updateProcessingNoteMutation.isPending}
         forwardingToSupply={forwardIncomingOrderMutation.isPending}
         loading={detailLoading || detailFetching}
         centralKitchenId={centralKitchenId}
       />
+
+      <AlertDialog open={!!confirmForwardAction} onOpenChange={(open) => !open && setConfirmForwardAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận Chuyển Cung ứng</AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-foreground mt-2">
+              Bạn có chắc chắn chuyển đơn hàng <span className="font-semibold text-primary">#{confirmForwardAction?.order?.storeOrderId}</span> sang bộ phận Cung ứng chưa?
+              <br/><br/>
+              <span className="text-destructive font-semibold">Cảnh báo:</span> Các sản phẩm không đủ tồn kho tại Bếp Trung tâm sẽ bị loại bỏ (drop) khỏi đơn hàng này!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy bỏ</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (confirmForwardAction) {
+                  handleForwardOrder(confirmForwardAction.order, confirmForwardAction.note);
+                  setConfirmForwardAction(null);
+                }
+              }}
+            >
+              Tiếp tục chuyển
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
