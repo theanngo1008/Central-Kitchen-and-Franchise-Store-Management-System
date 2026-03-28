@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useKitchenDashboardOverview } from '@/hooks/dashboard/useKitchenDashboard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { MetricCard } from '@/components/ui/MetricCard';
@@ -21,6 +21,7 @@ const getDaysAgo = (days: number) => {
 const getToday = () => format(new Date(), 'yyyy-MM-dd');
 
 const KitchenDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [fromDate, setFromDate] = useState<string>(getDaysAgo(6));
   const [toDate, setToDate] = useState<string>(getToday());
 
@@ -102,6 +103,7 @@ const KitchenDashboard: React.FC = () => {
           subtitle={`Trong tổng số ${data.orderQueueSummary.total} đơn`}
           icon={ClipboardList}
           variant="warning"
+          onClick={() => navigate('/kitchen/orders')}
         />
         <MetricCard
           title="Kế hoạch chưa hoàn tất"
@@ -109,6 +111,7 @@ const KitchenDashboard: React.FC = () => {
           subtitle={`${data.productionPlanSummary.overdueOpenCount} kế hoạch quá hạn`}
           icon={Factory}
           variant="primary"
+          onClick={() => navigate('/kitchen/production')}
         />
         <MetricCard
           title="Sản lượng chờ đáp ứng"
@@ -116,6 +119,7 @@ const KitchenDashboard: React.FC = () => {
           subtitle={`Hoàn thành: ${data.productionRunSummary.completedQuantity}`}
           icon={Package}
           variant="success"
+          onClick={() => navigate('/kitchen/production')}
         />
         <MetricCard
           title="Công việc khẩn cấp"
@@ -123,6 +127,7 @@ const KitchenDashboard: React.FC = () => {
           subtitle="Các yêu cầu quá thời gian"
           icon={AlertTriangle}
           variant={data.orderQueueSummary.overdueActionCount > 0 ? "danger" : "default"}
+          onClick={() => navigate('/kitchen/orders')}
         />
       </div>
 
@@ -137,7 +142,11 @@ const KitchenDashboard: React.FC = () => {
           <div className="space-y-3 flex-1 overflow-auto max-h-[400px]">
             {data.priorityActions.length > 0 ? (
               data.priorityActions.map((action, idx) => (
-                <div key={idx} className="p-3 rounded-lg bg-muted/30 border text-sm">
+                <div 
+                  key={idx} 
+                  className="p-3 rounded-lg bg-muted/30 border text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate('/kitchen/orders')}
+                >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-semibold text-primary">{action.actionType}</span>
                     <span className="text-xs text-muted-foreground">#{action.relatedCode}</span>

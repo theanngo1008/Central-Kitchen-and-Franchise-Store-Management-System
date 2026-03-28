@@ -10,6 +10,17 @@ export interface SupplyOrderQueueItemLineResponse {
     dropReason: string | null;
 }
 
+export interface SupplyOrderQueueIngredientLineResponse {
+    ingredientId: number;
+    ingredientName: string;
+    unit: string;
+    quantity: number;
+    forwardedQuantity: number;
+    droppedQuantity: number;
+    isDroppedFromForward: boolean;
+    dropReason: string | null;
+}
+
 export interface SupplyOrderQueueItemResponse {
     storeOrderId: number;
     orderCode: string;
@@ -29,6 +40,7 @@ export interface SupplyOrderQueueItemResponse {
     forwardNote?: string;
     processingNote?: string;
     items: SupplyOrderQueueItemLineResponse[];
+    ingredientItems?: SupplyOrderQueueIngredientLineResponse[];
 }
 
 export interface SupplyOrderListQuery {

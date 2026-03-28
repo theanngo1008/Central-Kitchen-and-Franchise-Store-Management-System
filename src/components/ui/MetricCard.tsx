@@ -11,6 +11,8 @@ interface MetricCardProps {
     isPositive: boolean;
   };
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
+  onClick?: () => void;
+  className?: string;
 }
 
 const variantStyles = {
@@ -28,9 +30,14 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   icon: Icon,
   trend,
   variant = 'default',
+  onClick,
+  className = '',
 }) => {
   return (
-    <div className="metric-card animate-fade-in">
+    <div 
+      onClick={onClick}
+      className={`metric-card animate-fade-in ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all' : ''} ${className}`}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>

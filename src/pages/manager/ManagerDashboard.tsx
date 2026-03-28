@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { MetricCard } from '@/components/ui/MetricCard';
@@ -55,6 +56,8 @@ const getToday = () => format(new Date(), 'yyyy-MM-dd');
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--muted-foreground))'];
 
 const ManagerDashboard: React.FC = () => {
+  const navigate = useNavigate();
+
   // State for filters
   const [franchiseId, setFranchiseId] = useState<number | undefined>(undefined);
   const [fromDate, setFromDate] = useState<string>(getDaysAgo(6));
@@ -207,6 +210,7 @@ const ManagerDashboard: React.FC = () => {
               subtitle={`Trong giai đoạn chọn${franchiseId ? '' : ` (${data.franchiseCount} cửa hàng)`}`} 
               icon={Package} 
               variant="default" 
+              onClick={() => navigate('/manager/reports')}
             />
             <MetricCard 
               title="Tổng giao hàng" 
@@ -214,6 +218,7 @@ const ManagerDashboard: React.FC = () => {
               subtitle={`${data.deliveryStatusSummary.deliveredCount} đã giao, ${data.deliveryStatusSummary.pendingCount} đang chờ`} 
               icon={TrendingUp} 
               variant="primary" 
+              onClick={() => navigate('/manager/reports')}
             />
             <MetricCard 
               title="Giao đúng hạn" 
@@ -221,6 +226,7 @@ const ManagerDashboard: React.FC = () => {
               subtitle={`${data.serviceLevelSummary.onTimeDeliveredCount} / ${data.serviceLevelSummary.totalDeliveriesDeliveredInRange} chuyến`} 
               icon={Clock} 
               variant={data.serviceLevelSummary.onTimeRate >= 0.9 ? 'success' : 'warning'} 
+              onClick={() => navigate('/manager/reports')}
             />
             <MetricCard 
               title="Cửa hàng hoạt động" 
@@ -228,6 +234,7 @@ const ManagerDashboard: React.FC = () => {
               subtitle="Đang vận hành trong scope" 
               icon={BarChart3} 
               variant="success" 
+              onClick={() => navigate('/manager/store-catalog')}
             />
           </div>
 

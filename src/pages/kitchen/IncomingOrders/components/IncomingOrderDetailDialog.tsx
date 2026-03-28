@@ -15,6 +15,7 @@ import {
   PackageCheck,
   X,
   CheckCircle2,
+  FlaskConical,
 } from "lucide-react";
 
 import type { IncomingOrder } from "@/types/kitchen/incomingOrder.types";
@@ -865,6 +866,76 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                 })}
               </div>
             </div>
+
+            {/* Ingredient items section */}
+            {(order.ingredientItems ?? []).length > 0 && (
+              <div className="border-t pt-4">
+                <p className="mb-3 font-medium flex items-center gap-2">
+                  <FlaskConical size={16} className="text-blue-600" />
+                  Nguyên liệu trong đơn
+                </p>
+                <div className="rounded-xl border overflow-hidden">
+                  <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    <div className="col-span-1 text-center">#</div>
+                    <div className="col-span-5">Nguyên liệu</div>
+                    <div className="col-span-2 text-center">SL đặt</div>
+                    <div className="col-span-2 text-center">Tồn kho Bếp</div>
+                    <div className="col-span-2 text-center">SL giao</div>
+                  </div>
+                  <div className="divide-y">
+                    {(order.ingredientItems ?? []).map((item, index) => {
+                      const dropped = item.isDroppedFromForward === true;
+                      const fwd = item.forwardedQuantity ?? 0;
+                      const avail = item.availableInCentralKitchenQuantity ?? 0;
+                      const partial = fwd > 0 && fwd < item.quantity;
+                      return (
+                        <div
+                          key={item.ingredientId}
+                          className={[
+                            "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center",
+                            dropped ? "bg-destructive/5" : partial ? "bg-amber-50" : "",
+                          ].join(" ")}
+                        >
+                          <div className="col-span-1 text-center text-muted-foreground">{index + 1}</div>
+                          <div className="col-span-5">
+                            <p className={`font-medium ${dropped ? "line-through text-muted-foreground" : ""}`}>
+                              {item.ingredientName}
+                            </p>
+                            {item.dropReason && (
+                              <p className="text-xs text-destructive mt-0.5 italic">Lý do: {item.dropReason}</p>
+                            )}
+                          </div>
+                          <div className="col-span-2 text-center">
+                            {item.quantity} <span className="text-muted-foreground text-xs">{item.unit}</span>
+                          </div>
+                          <div className="col-span-2 text-center">
+                            <span className={avail >= item.quantity ? "text-green-600" : "text-destructive"}>
+                              {avail}
+                            </span>{" "}
+                            <span className="text-muted-foreground text-xs">{item.unit}</span>
+                          </div>
+                          <div className="col-span-2 text-center font-medium">
+                            {dropped ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                                <X size={10} /> Hủy
+                              </span>
+                            ) : partial ? (
+                              <span className="text-amber-700">{fwd} {item.unit}</span>
+                            ) : fwd > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                                <CheckCircle2 size={12} /> {fwd} {item.unit}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">–</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col space-y-2 border-t pt-4 text-sm font-semibold">
               <div className="flex justify-between">

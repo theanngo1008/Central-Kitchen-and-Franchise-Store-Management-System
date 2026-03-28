@@ -51,6 +51,28 @@ export interface IncomingOrderItem {
   rawForwardSnapshotDroppedQuantity?: number | null;
 }
 
+export interface IncomingOrderIngredientItem {
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  quantity: number;
+
+  ingredientStatus?: string | null;
+
+  availableInCentralKitchenQuantity?: number | null;
+  isSufficientInCentralKitchen?: boolean | null;
+  availableCentralKitchenBatches?: IncomingOrderAvailableBatch[] | null;
+
+  forwardedQuantity?: number | null;
+  droppedQuantity?: number | null;
+  isDroppedFromForward?: boolean | null;
+  dropReason?: string | null;
+
+  hasForwardSnapshot?: boolean | null;
+  isForwardSnapshotConsistent?: boolean | null;
+  forwardSnapshotWarning?: string | null;
+}
+
 export interface IncomingOrder {
   storeOrderId: number;
   orderCode: string;
@@ -102,6 +124,7 @@ export interface IncomingOrder {
   droppedTotalQuantity: number;
 
   items: IncomingOrderItem[];
+  ingredientItems?: IncomingOrderIngredientItem[];
 }
 
 export interface IncomingOrderListData {

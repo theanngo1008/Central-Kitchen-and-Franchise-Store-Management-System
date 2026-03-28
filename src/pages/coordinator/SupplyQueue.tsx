@@ -8,6 +8,7 @@ import {
   usePrepareDelivery,
   useUpdateDeliveryStatus
 } from '@/hooks/coordinator/useSupplyQueue';
+import { FlaskConical } from 'lucide-react';
 import { SupplyOrderQueueItemResponse } from '@/types/supply';
 import { 
   Package, 
@@ -244,28 +245,58 @@ const SupplyQueue: React.FC = () => {
                     {expandedRows.has(order.storeOrderId) && (
                       <tr className="bg-muted/10 border-b">
                         <td colSpan={7} className="p-4">
-                          <div className="grid grid-cols-2 gap-8 pl-12">
-                            <div>
-                              <h4 className="text-sm font-semibold mb-2">Chi tiết sản phẩm</h4>
-                              <div className="space-y-2">
-                                {order.items.map((item, idx) => (
-                                  <div key={idx} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
-                                    <div className="flex flex-col">
-                                      <span>{item.productName} {item.sku ? `(${item.sku})` : ''}</span>
-                                      {item.isDroppedFromForward && (
-                                        <span className="text-[10px] text-destructive font-medium">Bị hủy: {item.dropReason || 'Không đủ tồn kho'}</span>
-                                      )}
+                          <div className="pl-12 space-y-4">
+                            {/* Products */}
+                            {order.items.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold mb-2">Chi tiết sản phẩm ({order.items.length})</h4>
+                                <div className="space-y-2">
+                                  {order.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
+                                      <div className="flex flex-col">
+                                        <span>{item.productName} {item.sku ? `(${item.sku})` : ''}</span>
+                                        {item.isDroppedFromForward && (
+                                          <span className="text-[10px] text-destructive font-medium">Bị hủy: {item.dropReason || 'Không đủ tồn kho'}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col items-end">
+                                        <span className="font-medium">{item.quantity} {item.unit}</span>
+                                        {item.forwardedQuantity > 0 && item.forwardedQuantity < item.quantity && (
+                                          <span className="text-[10px] text-green-600 font-medium">Giao: {item.forwardedQuantity} {item.unit}</span>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                      <span className="font-medium">{item.quantity} {item.unit}</span>
-                                      {item.forwardedQuantity > 0 && item.forwardedQuantity < item.quantity && (
-                                        <span className="text-[10px] text-green-600 font-medium">Giao: {item.forwardedQuantity} {item.unit}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
+                            )}
+                            {/* Ingredients */}
+                            {(order.ingredientItems ?? []).length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-blue-700">
+                                  <FlaskConical size={14} /> Nguyên liệu ({order.ingredientItems!.length})
+                                </h4>
+                                <div className="space-y-2">
+                                  {order.ingredientItems!.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm py-1 border-b border-blue-100 last:border-0">
+                                      <div className="flex flex-col">
+                                        <span>{item.ingredientName}</span>
+                                        {item.isDroppedFromForward && (
+                                          <span className="text-[10px] text-destructive font-medium">Bị hủy: {item.dropReason || 'Không đủ tồn kho'}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col items-end">
+                                        <span className="font-medium">{item.quantity} {item.unit}</span>
+                                        {item.forwardedQuantity > 0 && item.forwardedQuantity < item.quantity && (
+                                          <span className="text-[10px] text-green-600 font-medium">Giao: {item.forwardedQuantity} {item.unit}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* Processing info */}
                             <div>
                               <h4 className="text-sm font-semibold mb-2">Thông tin xử lý</h4>
                               <div className="p-3 bg-background rounded-lg border space-y-2 text-sm">
@@ -283,6 +314,7 @@ const SupplyQueue: React.FC = () => {
                         </td>
                       </tr>
                     )}
+
                   </React.Fragment>
                 ))
               )}

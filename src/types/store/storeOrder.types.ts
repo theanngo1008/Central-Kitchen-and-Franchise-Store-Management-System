@@ -25,6 +25,18 @@ export interface StoreOrderItem {
   dropReason?: string | null;
 }
 
+export interface StoreOrderIngredientItem {
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  quantity: number;
+
+  forwardedQuantity?: number | null;
+  droppedQuantity?: number | null;
+  isDroppedFromForward?: boolean | null;
+  dropReason?: string | null;
+}
+
 export interface StoreOrder {
   storeOrderId: number;
   orderCode?: string | null;
@@ -58,6 +70,7 @@ export interface StoreOrder {
   processingNote?: string | null;
 
   items: StoreOrderItem[];
+  ingredientItems?: StoreOrderIngredientItem[];
 }
 
 export interface StoreOrderListData {
@@ -84,12 +97,20 @@ export interface CreateStoreOrderPayload {
     productId: number;
     quantity: number;
   }[];
+  ingredientItems?: {
+    ingredientId: number;
+    quantity: number;
+  }[];
 }
 
 export interface UpdateStoreOrderPayload {
   orderDate: string;
   items: {
     productId: number;
+    quantity: number;
+  }[];
+  ingredientItems?: {
+    ingredientId: number;
     quantity: number;
   }[];
 }

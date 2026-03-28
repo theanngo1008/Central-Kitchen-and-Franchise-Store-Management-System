@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useStoreDashboardOverview } from '@/hooks/dashboard/useStoreDashboard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { MetricCard } from '@/components/ui/MetricCard';
@@ -31,6 +31,7 @@ const getToday = () => format(new Date(), 'yyyy-MM-dd');
 
 const StoreDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { storeId } = useParams<{ storeId: string }>();
 
   const [fromDate, setFromDate] = useState<string>(getDaysAgo(6));
   const [toDate, setToDate] = useState<string>(getToday());
@@ -79,7 +80,7 @@ const StoreDashboard: React.FC = () => {
         action={{
           label: 'Tạo đơn hàng',
           icon: ShoppingCart,
-          onClick: () => navigate('/store/orders/new')
+          onClick: () => navigate(`/stores/${storeId}/orders/new`)
         }}
       />
 
@@ -116,6 +117,7 @@ const StoreDashboard: React.FC = () => {
           subtitle={`Trong tổng số ${data.orderSummary.total} đơn mới`}
           icon={ShoppingCart}
           variant="primary"
+          onClick={() => navigate(`/stores/${storeId}/orders`)}
         />
         <MetricCard
           title="Chờ xác nhận nhập"
@@ -123,6 +125,7 @@ const StoreDashboard: React.FC = () => {
           subtitle={`${data.orderSummary.deliveredPendingReceivingCount} đơn đã giao đến`}
           icon={Truck}
           variant="warning"
+          onClick={() => navigate(`/stores/${storeId}/receive`)}
         />
         <MetricCard
           title="Tồn kho thấp"
@@ -130,6 +133,7 @@ const StoreDashboard: React.FC = () => {
           subtitle="Nguyên liệu cần nhập thêm"
           icon={AlertTriangle}
           variant={data.inventorySummary.lowStockIngredientCount > 0 ? "danger" : "default"}
+          onClick={() => navigate(`/stores/${storeId}/inventory`)}
         />
         <MetricCard
           title="Tổng mã tồn kho"
@@ -137,6 +141,7 @@ const StoreDashboard: React.FC = () => {
           subtitle={`${data.inventorySummary.ingredientItemCount} NL, ${data.inventorySummary.productItemCount} Sản phẩm`}
           icon={Package}
           variant="success"
+          onClick={() => navigate(`/stores/${storeId}/inventory`)}
         />
       </div>
 
@@ -146,7 +151,7 @@ const StoreDashboard: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Chuyến giao gần đây</h2>
             <Link
-              to="/store/receive"
+              to={`/stores/${storeId}/receive`}
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
               Xem tất cả <ArrowRight size={14} />
@@ -157,7 +162,8 @@ const StoreDashboard: React.FC = () => {
               {data.recentDeliveries.map((delivery) => (
                 <div
                   key={delivery.deliveryId}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate(`/stores/${storeId}/receive`)}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors"
                 >
                   <div>
                     <p className="font-medium text-primary">#{delivery.deliveryCode}</p>
@@ -188,7 +194,7 @@ const StoreDashboard: React.FC = () => {
               <AlertTriangle size={20} /> Cảnh báo tồn kho / Hết hạn
             </h2>
             <Link
-              to="/store/inventory"
+              to={`/stores/${storeId}/inventory`}
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
               Xem kho <ArrowRight size={14} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSupplyDashboardOverview } from '@/hooks/dashboard/useSupplyDashboard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { MetricCard } from '@/components/ui/MetricCard';
@@ -20,6 +20,7 @@ const getDaysAgo = (days: number) => {
 const getToday = () => format(new Date(), 'yyyy-MM-dd');
 
 const CoordinatorDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [fromDate, setFromDate] = useState<string>(getDaysAgo(6));
   const [toDate, setToDate] = useState<string>(getToday());
 
@@ -101,6 +102,7 @@ const CoordinatorDashboard: React.FC = () => {
           subtitle={`Trong tổng số ${data.orderStatusSummary.total} đơn mới`}
           icon={ClipboardList}
           variant="warning"
+          onClick={() => navigate('/coordinator/orders')}
         />
         <MetricCard
           title="Đơn đang chuẩn bị"
@@ -108,6 +110,7 @@ const CoordinatorDashboard: React.FC = () => {
           subtitle={`Sẵn sàng: ${data.orderStatusSummary.readyToDeliverCount} đơn`}
           icon={Calendar}
           variant="primary"
+          onClick={() => navigate('/coordinator/orders')}
         />
         <MetricCard
           title="Đơn đang giao"
@@ -115,6 +118,7 @@ const CoordinatorDashboard: React.FC = () => {
           subtitle={`${data.orderStatusSummary.deliveredCount} đơn đã giao`}
           icon={Truck}
           variant="success"
+          onClick={() => navigate('/coordinator/supply-queue')}
         />
         <MetricCard
           title="Sự cố & Hủy món"
@@ -122,6 +126,7 @@ const CoordinatorDashboard: React.FC = () => {
           subtitle={`Từ ${data.droppedLineSummary.ordersWithDroppedLinesCount} đơn bị thiếu`}
           icon={PackageMinus}
           variant={data.droppedLineSummary.droppedLinesCount > 0 ? "danger" : "default"}
+          onClick={() => navigate('/coordinator/exceptions')}
         />
       </div>
 
@@ -136,7 +141,11 @@ const CoordinatorDashboard: React.FC = () => {
           <div className="space-y-3 flex-1 overflow-auto max-h-[400px]">
             {data.priorityActions.length > 0 ? (
               data.priorityActions.map((action, idx) => (
-                <div key={idx} className="p-3 rounded-lg bg-muted/30 border text-sm">
+                <div 
+                  key={idx} 
+                  className="p-3 rounded-lg bg-muted/30 border text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate('/coordinator/orders')}
+                >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-semibold text-primary">{action.actionType}</span>
                     <span className="text-xs text-muted-foreground">

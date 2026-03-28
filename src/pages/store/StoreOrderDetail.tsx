@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   PackageCheck,
   X,
+  FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,7 +27,7 @@ import {
 import { useStoreOrderDetail } from "@/hooks/storeOrders/useStoreOrderDetail";
 import { useSubmitStoreOrder } from "@/hooks/storeOrders/useSubmitStoreOrder";
 import { useCancelStoreOrder } from "@/hooks/storeOrders/useCancelStoreOrder";
-import type { StoreOrder, StoreOrderItem } from "@/types/store/storeOrder.types";
+import type { StoreOrder, StoreOrderItem, StoreOrderIngredientItem } from "@/types/store/storeOrder.types";
 import StoreOrderProgress from "./CreateOrder/components/StoreOrderProgress";
 
 const DELIVERY_STATUS_HELPER: Record<string, string> = {
@@ -279,7 +280,7 @@ const StoreOrderDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Items list */}
+      {/* Product Items list */}
       <div className="bg-card border rounded-xl p-6">
         <h2 className="text-base font-semibold mb-4">Danh sách sản phẩm</h2>
 
@@ -287,7 +288,6 @@ const StoreOrderDetail: React.FC = () => {
           <p className="text-sm text-muted-foreground">Đơn hàng chưa có sản phẩm nào.</p>
         ) : (
           <div className="rounded-xl border overflow-hidden">
-            {/* Header */}
             <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-5">Sản phẩm</div>
@@ -295,44 +295,31 @@ const StoreOrderDetail: React.FC = () => {
               <div className="col-span-2 text-center">SL giao</div>
               <div className="col-span-2 text-center">Trạng thái</div>
             </div>
-
             <div className="divide-y">
               {order.items.map((item, index) => {
                 const dropped = isItemDropped(item);
                 const partial = isItemPartial(item);
-
                 return (
                   <div
                     key={item.productId}
                     className={[
                       "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center",
-                      dropped
-                        ? "bg-destructive/5"
-                        : partial
-                        ? "bg-yellow-50"
-                        : "",
+                      dropped ? "bg-destructive/5" : partial ? "bg-yellow-50" : "",
                     ].join(" ")}
                   >
                     <div className="col-span-1 text-center text-muted-foreground">{index + 1}</div>
-
                     <div className="col-span-5">
                       <p className={`font-medium ${dropped ? "line-through text-muted-foreground" : ""}`}>
                         {item.productName}
                       </p>
-                      {item.sku && (
-                        <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
-                      )}
+                      {item.sku && <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>}
                       {item.dropReason && (
-                        <p className="text-xs text-destructive mt-0.5 italic">
-                          Lý do: {item.dropReason}
-                        </p>
+                        <p className="text-xs text-destructive mt-0.5 italic">Lý do: {item.dropReason}</p>
                       )}
                     </div>
-
                     <div className="col-span-2 text-center">
                       {item.quantity} <span className="text-muted-foreground text-xs">{item.unit}</span>
                     </div>
-
                     <div className="col-span-2 text-center font-medium">
                       {dropped ? (
                         <span className="text-destructive">0 {item.unit}</span>
@@ -344,7 +331,6 @@ const StoreOrderDetail: React.FC = () => {
                         <span className="text-muted-foreground">–</span>
                       )}
                     </div>
-
                     <div className="col-span-2 text-center">
                       {dropped ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
@@ -369,6 +355,66 @@ const StoreOrderDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Ingredient Items list */}
+      {(order.ingredientItems ?? []).length > 0 && (
+        <div className="bg-card border rounded-xl p-6">
+          <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
+            <FlaskConical size={18} className="text-blue-600" />
+            Danh sách nguyên liệu
+          </h2>
+          <div className="rounded-xl border overflow-hidden">
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
+              <div className="col-span-1 text-center">#</div>
+              <div className="col-span-6">Nguyên liệu</div>
+              <div className="col-span-2 text-center">SL đặt</div>
+              <div className="col-span-3 text-center">SL giao</div>
+            </div>
+            <div className="divide-y">
+              {(order.ingredientItems ?? []).map((item: StoreOrderIngredientItem, index: number) => {
+                const dropped = item.isDroppedFromForward === true;
+                const partial =
+                  typeof item.forwardedQuantity === "number" &&
+                  item.forwardedQuantity > 0 &&
+                  item.forwardedQuantity < item.quantity;
+                return (
+                  <div
+                    key={item.ingredientId}
+                    className={[
+                      "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center",
+                      dropped ? "bg-destructive/5" : partial ? "bg-yellow-50" : "",
+                    ].join(" ")}
+                  >
+                    <div className="col-span-1 text-center text-muted-foreground">{index + 1}</div>
+                    <div className="col-span-6">
+                      <p className={`font-medium ${dropped ? "line-through text-muted-foreground" : ""}`}>
+                        {item.ingredientName}
+                      </p>
+                      {item.dropReason && (
+                        <p className="text-xs text-destructive mt-0.5 italic">Lý do: {item.dropReason}</p>
+                      )}
+                    </div>
+                    <div className="col-span-2 text-center">
+                      {item.quantity} <span className="text-muted-foreground text-xs">{item.unit}</span>
+                    </div>
+                    <div className="col-span-3 text-center font-medium">
+                      {dropped ? (
+                        <span className="text-destructive">0 {item.unit}</span>
+                      ) : partial ? (
+                        <span className="text-yellow-700">{item.forwardedQuantity} {item.unit}</span>
+                      ) : typeof item.forwardedQuantity === "number" ? (
+                        <span className="text-green-700">{item.forwardedQuantity} {item.unit}</span>
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       {(canSubmit || canCancel) && (

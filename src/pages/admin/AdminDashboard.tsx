@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { useAdminDashboardOverview } from '@/hooks/admin/useAdminDashboard';
@@ -42,6 +43,7 @@ const getToday = () => format(new Date(), 'yyyy-MM-dd');
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--muted-foreground))'];
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [fromDate, setFromDate] = useState<string>(getDaysAgo(6));
   const [toDate, setToDate] = useState<string>(getToday());
   const [top, setTop] = useState<number>(10);
@@ -211,6 +213,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`${data.franchiseSummary.active} Hoạt động | ${data.franchiseSummary.inactive} Vô hiệu`} 
           icon={Store} 
           variant="success" 
+          onClick={() => navigate('/admin/franchises')}
         />
         <MetricCard 
           title="Bếp Trung Tâm / CK" 
@@ -218,6 +221,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`${data.centralKitchenSummary.active} Hoạt động | ${data.centralKitchenSummary.inactive} Vô hiệu`} 
           icon={Store} 
           variant="warning" 
+          onClick={() => navigate('/admin/franchises')}
         />
         <MetricCard 
           title="Hồ sơ tài khoản" 
@@ -225,6 +229,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`${data.userSummary.active} Hoạt động | ${data.userSummary.inactive} Khóa`} 
           icon={Users} 
           variant="primary" 
+          onClick={() => navigate('/admin/users')}
         />
         <MetricCard 
           title="Phân quyền (RBAC)" 
@@ -232,6 +237,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`${data.rbacSummary.permissionActiveCount} Nhóm quyền | ${data.rbacSummary.rolePermissionLinkCount} Liên kết`} 
           icon={Shield} 
           variant="default" 
+          onClick={() => navigate('/admin/rbac')}
         />
       </div>
 
