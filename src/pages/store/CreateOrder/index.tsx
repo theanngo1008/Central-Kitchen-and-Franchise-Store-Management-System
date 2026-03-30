@@ -34,6 +34,7 @@ export type IngredientDraftItem = {
   ingredientId: number;
   ingredientName: string;
   unit: string;
+  price?: number;
   quantity: number;
 };
 
@@ -117,10 +118,12 @@ const CreateOrderPage: React.FC = () => {
 
     const nextIngredientMap: Record<number, IngredientDraftItem> = {};
     (detailOrder.ingredientItems ?? []).forEach((item) => {
+      const catalogItem = ingredients.find((i) => i.id === item.ingredientId);
       nextIngredientMap[item.ingredientId] = {
         ingredientId: item.ingredientId,
         ingredientName: item.ingredientName,
         unit: item.unit,
+        price: catalogItem?.price,
         quantity: item.quantity,
       };
     });
@@ -189,6 +192,7 @@ const CreateOrderPage: React.FC = () => {
           ingredientId: ingredient.id,
           ingredientName: ingredient.name,
           unit: ingredient.unit,
+          price: ingredient.price,
           quantity: (existed?.quantity ?? 0) + 1,
         },
       };

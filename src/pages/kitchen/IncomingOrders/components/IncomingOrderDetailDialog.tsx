@@ -500,14 +500,16 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                   </div>
 
                   <div className="space-y-2">
-                    {droppedItems.map((item) => (
+                    {droppedItems.map((item, idx) => (
                       <div
-                        key={item.productId}
+                        key={(item as any).productId || (item as any).ingredientId || `drop-${idx}`}
                         className="rounded-md border border-destructive/20 bg-background p-3 text-sm"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-medium">{item.productName}</p>
+                            <p className="font-medium">
+                              {(item as any).productName || (item as any).ingredientName || "Tên không xác định"}
+                            </p>
                             {item.sku && (
                               <p className="text-xs text-muted-foreground">
                                 SKU: {item.sku}
@@ -530,16 +532,18 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                           </div>
 
                           <div className="rounded-md bg-muted/50 p-2">
-                            <p className="text-muted-foreground">Hủy</p>
+                            <p className="text-muted-foreground">Đã hủy</p>
                             <p className="font-medium text-destructive">
-                              {item.droppedQuantity ?? item.quantity}{" "}
+                              {item.droppedQuantity ??
+                                (item.quantity ?? 0) -
+                                  (item.forwardedQuantity ?? 0)}{" "}
                               {item.unit}
                             </p>
                           </div>
                         </div>
 
                         {item.dropReason ? (
-                          <p className="mt-2 text-xs text-muted-foreground">
+                          <p className="mt-2 text-xs text-muted-foreground italic">
                             Lý do: {item.dropReason}
                           </p>
                         ) : null}
@@ -569,14 +573,17 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                   </div>
 
                   <div className="space-y-2">
-                    {partialItems.map((item) => (
+                    {partialItems.map((item, idx) => (
                       <div
-                        key={item.productId}
+                        key={(item as any).productId || (item as any).ingredientId || `partial-${idx}`}
                         className="rounded-md border border-yellow-200 bg-background p-3 text-sm"
                       >
+binary
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-medium">{item.productName}</p>
+                            <p className="font-medium">
+                              {(item as any).productName || (item as any).ingredientName || "Tên không xác định"}
+                            </p>
                             {item.sku && (
                               <p className="text-xs text-muted-foreground">
                                 SKU: {item.sku}
@@ -599,8 +606,8 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                           </div>
 
                           <div className="rounded-md bg-muted/50 p-2">
-                            <p className="text-muted-foreground">Đã forward</p>
-                            <p className="font-medium text-yellow-600">
+                            <p className="text-muted-foreground">Đã giao</p>
+                            <p className="font-medium text-blue-600">
                               {item.forwardedQuantity ?? 0} {item.unit}
                             </p>
                           </div>
@@ -619,7 +626,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                         </div>
 
                         {item.dropReason ? (
-                          <p className="mt-2 text-xs text-muted-foreground">
+                          <p className="mt-2 text-xs text-muted-foreground italic">
                             Lý do: {item.dropReason}
                           </p>
                         ) : null}
@@ -639,7 +646,15 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
             )}
 
             <div className="border-t pt-4">
-              <p className="mb-3 font-medium">Danh sách mặt hàng</p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="font-medium flex items-center gap-2">
+                  <PackageCheck size={18} className="text-primary" />
+                  Danh sách sản phẩm
+                </p>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {order.items.length} SP
+                </span>
+              </div>
 
               <div className="space-y-3">
                 {order.items.map((item) => {
@@ -657,9 +672,7 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                     : true;
 
                   const isDropped =
-                    item.isDroppedFromForward === true ||
-                    (item.droppedQuantity ?? 0) > 0 ||
-                    item.isDropped === true;
+                    item.isDroppedFromForward === true && (item.forwardedQuantity === 0 || item.forwardedQuantity == null);
 
                   const forwardedQty = item.forwardedQuantity ?? 0;
                   const droppedQty = item.droppedQuantity ?? 0;
@@ -747,43 +760,16 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                         </div>
                       </div>
 
-                      {hasItemCheckData && (
-                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                          <div className="rounded-md bg-background p-2">
-                            <p className="text-muted-foreground">
-                              Số lượng đặt
-                            </p>
-                            <p className="font-medium">
-                              {item.quantity} {item.unit}
-                            </p>
-                          </div>
-
-                          <div className="rounded-md bg-background p-2">
-                            <p className="text-muted-foreground">
-                              Tồn kho khả dụng tại Bếp Trung Tâm
-                            </p>
-                            <p
-                              className={`font-medium ${
-                                isEnough ? "text-green-600" : "text-destructive"
-                              }`}
-                            >
-                              {availableQty} {item.unit}
-                            </p>
-                          </div>
+                      <div className="mt-3 grid grid-cols-1 gap-3 text-xs">
+                        <div className="rounded-md bg-background p-2">
+                          <p className="text-muted-foreground">
+                            Số lượng đặt
+                          </p>
+                          <p className="font-medium">
+                            {item.quantity} {item.unit}
+                          </p>
                         </div>
-                      )}
-
-                      {hasItemCheckData && (
-                        <div className="mt-3 text-xs">
-                          {isEnough ? (
-                            <span className="text-emerald-600">Đủ tồn kho</span>
-                          ) : (
-                            <span className="text-red-600">
-                              Không đủ tồn kho
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      </div>
 
                       {(isPartial || isDropped || isFull) && (
                         <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
@@ -867,72 +853,84 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Ingredient items section */}
-            {(order.ingredientItems ?? []).length > 0 && (
+
+            {order.ingredientItems && order.ingredientItems.length > 0 && (
               <div className="border-t pt-4">
-                <p className="mb-3 font-medium flex items-center gap-2">
-                  <FlaskConical size={16} className="text-blue-600" />
-                  Nguyên liệu trong đơn
-                </p>
-                <div className="rounded-xl border overflow-hidden">
-                  <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                    <div className="col-span-1 text-center">#</div>
-                    <div className="col-span-5">Nguyên liệu</div>
-                    <div className="col-span-2 text-center">SL đặt</div>
-                    <div className="col-span-2 text-center">Tồn kho Bếp</div>
-                    <div className="col-span-2 text-center">SL giao</div>
-                  </div>
-                  <div className="divide-y">
-                    {(order.ingredientItems ?? []).map((item, index) => {
-                      const dropped = item.isDroppedFromForward === true;
-                      const fwd = item.forwardedQuantity ?? 0;
-                      const avail = item.availableInCentralKitchenQuantity ?? 0;
-                      const partial = fwd > 0 && fwd < item.quantity;
-                      return (
-                        <div
-                          key={item.ingredientId}
-                          className={[
-                            "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center",
-                            dropped ? "bg-destructive/5" : partial ? "bg-amber-50" : "",
-                          ].join(" ")}
-                        >
-                          <div className="col-span-1 text-center text-muted-foreground">{index + 1}</div>
-                          <div className="col-span-5">
-                            <p className={`font-medium ${dropped ? "line-through text-muted-foreground" : ""}`}>
-                              {item.ingredientName}
-                            </p>
-                            {item.dropReason && (
-                              <p className="text-xs text-destructive mt-0.5 italic">Lý do: {item.dropReason}</p>
-                            )}
-                          </div>
-                          <div className="col-span-2 text-center">
-                            {item.quantity} <span className="text-muted-foreground text-xs">{item.unit}</span>
-                          </div>
-                          <div className="col-span-2 text-center">
-                            <span className={avail >= item.quantity ? "text-green-600" : "text-destructive"}>
-                              {avail}
-                            </span>{" "}
-                            <span className="text-muted-foreground text-xs">{item.unit}</span>
-                          </div>
-                          <div className="col-span-2 text-center font-medium">
-                            {dropped ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
-                                <X size={10} /> Hủy
-                              </span>
-                            ) : partial ? (
-                              <span className="text-amber-700">{fwd} {item.unit}</span>
-                            ) : fwd > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-                                <CheckCircle2 size={12} /> {fwd} {item.unit}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">–</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-medium flex items-center gap-2 text-emerald-700">
+                    <FlaskConical size={18} />
+                    Danh sách nguyên liệu
+                  </p>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {order.ingredientItems.length} loại
+                  </span>
+                </div>
+
+                <div className="overflow-hidden rounded-lg border bg-background text-sm">
+                  <table className="w-full border-collapse text-left">
+                    <thead className="bg-muted lg:table-header-group">
+                      <tr className="border-b">
+                        <th className="px-3 py-2 text-center font-semibold text-muted-foreground w-10">#</th>
+                        <th className="px-3 py-2 font-semibold text-muted-foreground min-w-[150px]">Nguyên liệu</th>
+                        <th className="px-3 py-2 text-center font-semibold text-muted-foreground whitespace-nowrap">SL đặt</th>
+                        <th className="px-3 py-2 text-center font-semibold text-muted-foreground whitespace-nowrap">SL giao</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {order.ingredientItems.map((item, index) => {
+                        const hasItemCheckData =
+                          typeof item.isSufficientInCentralKitchen === "boolean" ||
+                          typeof item.availableInCentralKitchenQuantity === "number";
+
+                        const requestedQty = item.quantity ?? 0;
+                        const availableQty = item.availableInCentralKitchenQuantity ?? 0;
+
+                        const isEnough = hasItemCheckData
+                          ? (item.isSufficientInCentralKitchen ?? availableQty >= requestedQty)
+                          : true;
+
+                        const isDropped = item.isDroppedFromForward === true && (item.forwardedQuantity === 0 || item.forwardedQuantity == null);
+                        const forwardedQty = item.forwardedQuantity ?? 0;
+                        const isPartial = !isDropped && forwardedQty > 0 && forwardedQty < requestedQty;
+                        const isFull = requestedQty > 0 && forwardedQty === requestedQty;
+
+                        const rowBgClass = isDropped
+                          ? "bg-red-50 hover:bg-red-100/50"
+                          : isPartial
+                            ? "bg-amber-50 hover:bg-amber-100/50"
+                            : isFull
+                              ? "bg-emerald-50/50 hover:bg-emerald-50"
+                              : "hover:bg-muted/50";
+
+                        return (
+                          <React.Fragment key={item.ingredientId || `ing-${index}`}>
+                            <tr className={`${rowBgClass} transition-colors`}>
+                              <td className="px-3 py-2 text-center align-top text-muted-foreground">
+                                {index + 1}
+                              </td>
+                              <td className="px-3 py-2 align-top">
+                                <p className={`font-medium ${isDropped ? "line-through text-muted-foreground" : ""}`}>
+                                  {item.ingredientName || "Nguyên liệu không tên"}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground italic">Đơn vị: {item.unit}</p>
+                                {item.dropReason && (
+                                  <p className="mt-1 text-[10px] text-destructive leading-relaxed font-normal bg-destructive/10 px-1.5 py-0.5 rounded inline-block max-w-xs break-words italic">
+                                    Lý do: {item.dropReason}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-center align-top font-medium text-muted-foreground">
+                                {requestedQty}
+                              </td>
+                              <td className={`px-3 py-2 text-center align-top font-bold ${isDropped ? "text-red-700" : isPartial ? "text-amber-700" : "text-emerald-700"}`}>
+                                {forwardedQty}
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -943,14 +941,14 @@ const IncomingOrderDetailDialog: React.FC<Props> = ({
                 <span>{order.totalQuantity || totalQty}</span>
               </div>
 
-              {order.forwardedTotalQuantity > 0 && (
-                <div className="flex justify-between text-green-600">
+              {(order.forwardedTotalQuantity ?? 0) > 0 && (
+                <div className="flex justify-between text-blue-600">
                   <span>Tổng số lượng giao</span>
                   <span>{order.forwardedTotalQuantity}</span>
                 </div>
               )}
 
-              {order.droppedTotalQuantity > 0 && (
+              {(order.droppedTotalQuantity ?? 0) > 0 && (
                 <div className="flex justify-between text-destructive">
                   <span>Tổng số lượng hủy</span>
                   <span>{order.droppedTotalQuantity}</span>

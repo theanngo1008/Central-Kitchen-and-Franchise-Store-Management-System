@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -51,13 +52,13 @@ const getCurrentFranchiseId = () => {
 const getOrderCode = (order: StoreOrder) =>
   order.orderCode || `SO-${String(order.storeOrderId).padStart(6, "0")}`;
 
-const isItemDropped = (item: StoreOrderItem) =>
-  item.isDroppedFromForward === true;
-
 const isItemPartial = (item: StoreOrderItem) =>
   typeof item.forwardedQuantity === "number" &&
   item.forwardedQuantity > 0 &&
   item.forwardedQuantity < item.quantity;
+
+const isItemDropped = (item: StoreOrderItem) =>
+  item.isDroppedFromForward === true && (item.forwardedQuantity === 0 || item.forwardedQuantity == null);
 
 const StoreOrderDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -99,12 +100,47 @@ const StoreOrderDetail: React.FC = () => {
     return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(date);
   };
 
-  const droppedItems = useMemo(() => order?.items.filter(isItemDropped) ?? [], [order]);
-  const partialItems = useMemo(() => order?.items.filter(isItemPartial) ?? [], [order]);
-  const hasDroppedOrPartial = droppedItems.length > 0 || partialItems.length > 0;
+  const getTotalRequested = (order: StoreOrder) => {
+    if (!order || !order.items) return 0;
+    const productsVal = order.items.reduce((s, i) => s + i.quantity, 0);
+    const ingredientsVal = (order.ingredientItems ?? []).reduce((s, i) => s + i.quantity, 0);
+    return order.totalQuantity ?? (productsVal + ingredientsVal);
+  };
+
+  const getTotalForwarded = (order: StoreOrder) => {
+    if (!order || !order.items) return null;
+    if (order.status === "DRAFT" || order.status === "SUBMITTED") return null;
+    if (order.forwardedTotalQuantity != null) return order.forwardedTotalQuantity;
+    const productsVal = order.items.reduce((s, i) => s + (i.forwardedQuantity ?? i.quantity), 0);
+    const ingredientsVal = (order.ingredientItems ?? []).reduce((s, i) => s + (i.forwardedQuantity ?? i.quantity), 0);
+    return productsVal + ingredientsVal;
+  };
+
+  const getTotalDropped = (order: StoreOrder) => {
+    if (!order || !order.items) return 0;
+    if (order.droppedTotalQuantity != null) return order.droppedTotalQuantity;
+    const productsVal = order.items.reduce((s, i) => s + (i.droppedQuantity ?? 0), 0);
+    const ingredientsVal = (order.ingredientItems ?? []).reduce((s, i) => s + (i.droppedQuantity ?? 0), 0);
+    return productsVal + ingredientsVal;
+  };
+
+  const droppedItems = useMemo(() => {
+    const products = order?.items.filter(isItemDropped) ?? [];
+    const ingredients = (order?.ingredientItems ?? []).filter(isItemDropped as any);
+    return [...products, ...ingredients];
+  }, [order]);
+
+  const partialItems = useMemo(() => {
+    const products = order?.items.filter(isItemPartial) ?? [];
+    const ingredients = (order?.ingredientItems ?? []).filter(isItemPartial as any);
+    return [...products, ...ingredients];
+  }, [order]);
+
+  const hasDroppedOrPartial = droppedItems.length > 0 || partialItems.length > 0 || (order && (getTotalForwarded(order) ?? 0) < (getTotalRequested(order) ?? 0));
 
   const canSubmit = !!order && order.status === "DRAFT";
-  const canCancel = !!order && (order.status === "DRAFT" || order.status === "SUBMITTED");
+  const isCommitted = !!order && !["DRAFT", "SUBMITTED", "FORWARDED_TO_SUPPLY"].includes(order.status);
+  const canCancel = !!order && (order.status === "DRAFT" || order.status === "SUBMITTED" || order.status === "FORWARDED_TO_SUPPLY") && !isCommitted;
 
   const handleSubmitOrder = async () => {
     if (!order) return;
@@ -179,22 +215,21 @@ const StoreOrderDetail: React.FC = () => {
 
       <StoreOrderProgress status={order.status} />
 
-      {/* ⚠️ Dropped / partial alert banner */}
-      {hasDroppedOrPartial && (
-        <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-4">
+      {/* 🔒 Committed / Locked banner */}
+      {isCommitted && order.status !== "RECEIVED_BY_STORE" && order.status !== "CANCELLED" && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+            <PackageCheck className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-yellow-900">Đơn hàng bị thay đổi khi xử lý</h3>
-              <p className="text-sm text-yellow-800 mt-1">
-                Do tồn kho tại Bếp Trung Tâm không đủ, một số sản phẩm trong đơn của bạn đã bị{" "}
-                <strong>hủy hoàn toàn</strong> hoặc <strong>giao một phần</strong>.
-                Xem chi tiết bên dưới.
+              <h3 className="font-semibold text-blue-900">Đơn hàng đã được xác nhận cung ứng</h3>
+              <p className="text-sm text-blue-800 mt-1">
+                Kho đã bắt đầu chuẩn bị hoặc đang giao hàng. Hiện tại bạn <strong>không thể hủy</strong> đơn hàng này.
               </p>
             </div>
           </div>
         </div>
       )}
+
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -211,21 +246,39 @@ const StoreOrderDetail: React.FC = () => {
           <p className="font-semibold">{formatDate(order.requestedDeliveryDate || order.orderDate)}</p>
         </div>
 
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Tổng đặt / Giao</p>
-          <p className="font-semibold">
-            {order.totalQuantity ?? order.items.reduce((s, i) => s + i.quantity, 0)}
-            {order.forwardedTotalQuantity != null && order.forwardedTotalQuantity > 0 && (
-              <span className="text-green-600 ml-1 text-sm">→ {order.forwardedTotalQuantity}</span>
+        <div className="bg-card border rounded-xl p-4 flex flex-col justify-between">
+          <p className="text-xs text-muted-foreground mb-1 uppercase font-bold tracking-wider">Tổng sản phẩm</p>
+          <div className="flex items-end justify-between">
+            <p className="text-2xl font-bold">{order.items.length} SP</p>
+            {hasDroppedOrPartial && (
+              <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
+                Có thay đổi
+              </Badge>
             )}
-          </p>
+          </div>
         </div>
 
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Đã hủy</p>
-          <p className={`font-semibold ${(order.droppedTotalQuantity ?? 0) > 0 ? "text-destructive" : "text-muted-foreground"}`}>
-            {order.droppedTotalQuantity ?? 0}
-          </p>
+        <div className="bg-card border rounded-xl p-4 flex flex-col justify-between">
+          <p className="text-xs text-muted-foreground mb-1 uppercase font-bold tracking-wider">Số lượng giao</p>
+          <div className="flex items-end gap-2">
+            <p className="text-2xl font-bold text-primary">
+              {getTotalForwarded(order) ?? "-"}
+            </p>
+            {hasDroppedOrPartial && (
+              <p className="text-xs text-muted-foreground mb-1">
+                / {getTotalRequested(order)} đặt
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-card border rounded-xl p-4 flex flex-col justify-between">
+          <p className="text-xs text-muted-foreground mb-1 uppercase font-bold tracking-wider text-destructive">Bị hủy</p>
+          <div className="flex items-end">
+            <p className={`text-2xl font-bold ${getTotalDropped(order) > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+              {getTotalDropped(order)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -303,8 +356,8 @@ const StoreOrderDetail: React.FC = () => {
                   <div
                     key={item.productId}
                     className={[
-                      "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center",
-                      dropped ? "bg-destructive/5" : partial ? "bg-yellow-50" : "",
+                      "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center transition-colors",
+                      dropped ? "bg-destructive/5 hover:bg-destructive/10" : partial ? "bg-amber-50/50 hover:bg-amber-50" : "hover:bg-muted/5",
                     ].join(" ")}
                   >
                     <div className="col-span-1 text-center text-muted-foreground">{index + 1}</div>
@@ -321,12 +374,14 @@ const StoreOrderDetail: React.FC = () => {
                       {item.quantity} <span className="text-muted-foreground text-xs">{item.unit}</span>
                     </div>
                     <div className="col-span-2 text-center font-medium">
-                      {dropped ? (
-                        <span className="text-destructive">0 {item.unit}</span>
-                      ) : partial ? (
-                        <span className="text-yellow-700">{item.forwardedQuantity} {item.unit}</span>
-                      ) : typeof item.forwardedQuantity === "number" ? (
-                        <span className="text-green-700">{item.forwardedQuantity} {item.unit}</span>
+                      {typeof item.forwardedQuantity === "number" ? (
+                        item.forwardedQuantity === 0 && dropped ? (
+                          <span className="text-destructive">0 {item.unit}</span>
+                        ) : item.forwardedQuantity < item.quantity ? (
+                          <span className="text-yellow-700">{item.forwardedQuantity} {item.unit}</span>
+                        ) : (
+                          <span className="text-green-700">{item.forwardedQuantity} {item.unit}</span>
+                        )
                       ) : (
                         <span className="text-muted-foreground">–</span>
                       )}
@@ -372,8 +427,9 @@ const StoreOrderDetail: React.FC = () => {
             </div>
             <div className="divide-y">
               {(order.ingredientItems ?? []).map((item: StoreOrderIngredientItem, index: number) => {
-                const dropped = item.isDroppedFromForward === true;
+                const dropped = item.isDroppedFromForward === true && (item.forwardedQuantity === 0 || item.forwardedQuantity == null);
                 const partial =
+                  !dropped &&
                   typeof item.forwardedQuantity === "number" &&
                   item.forwardedQuantity > 0 &&
                   item.forwardedQuantity < item.quantity;
@@ -381,8 +437,8 @@ const StoreOrderDetail: React.FC = () => {
                   <div
                     key={item.ingredientId}
                     className={[
-                      "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center",
-                      dropped ? "bg-destructive/5" : partial ? "bg-yellow-50" : "",
+                      "grid grid-cols-12 gap-2 px-4 py-3 text-sm items-center transition-colors",
+                      dropped ? "bg-destructive/5 hover:bg-destructive/10" : partial ? "bg-amber-50/50 hover:bg-amber-50" : "hover:bg-muted/5",
                     ].join(" ")}
                   >
                     <div className="col-span-1 text-center text-muted-foreground">{index + 1}</div>
@@ -398,12 +454,14 @@ const StoreOrderDetail: React.FC = () => {
                       {item.quantity} <span className="text-muted-foreground text-xs">{item.unit}</span>
                     </div>
                     <div className="col-span-3 text-center font-medium">
-                      {dropped ? (
-                        <span className="text-destructive">0 {item.unit}</span>
-                      ) : partial ? (
-                        <span className="text-yellow-700">{item.forwardedQuantity} {item.unit}</span>
-                      ) : typeof item.forwardedQuantity === "number" ? (
-                        <span className="text-green-700">{item.forwardedQuantity} {item.unit}</span>
+                      {typeof item.forwardedQuantity === "number" ? (
+                        item.forwardedQuantity === 0 && dropped ? (
+                          <span className="text-destructive">0 {item.unit}</span>
+                        ) : item.forwardedQuantity < item.quantity ? (
+                          <span className="text-yellow-700">{item.forwardedQuantity} {item.unit}</span>
+                        ) : (
+                          <span className="text-green-700">{item.forwardedQuantity} {item.unit}</span>
+                        )
                       ) : (
                         <span className="text-muted-foreground">–</span>
                       )}

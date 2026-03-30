@@ -3,20 +3,21 @@ import {
   IncomingOrderItem,
 } from "@/types/kitchen/incomingOrder.types";
 
-const getRequestedQuantity = (item: IncomingOrderItem) => item.quantity || 0;
-const getForwardedQuantity = (item: IncomingOrderItem) =>
+const getRequestedQuantity = (item: any) => item.quantity || 0;
+const getForwardedQuantity = (item: any) =>
   item.forwardedQuantity ?? 0;
-const getDroppedQuantity = (item: IncomingOrderItem) =>
+const getDroppedQuantity = (item: any) =>
   item.droppedQuantity ?? 0;
 
 export const isItemDroppedFromForward = (
   item: IncomingOrderItem,
 ): boolean => {
-  if (item.isDroppedFromForward === true) return true;
-  if (getDroppedQuantity(item) > 0) return true;
+  const forwarded = getForwardedQuantity(item);
+  if (item.isDroppedFromForward === true && forwarded === 0) return true;
+  if (getDroppedQuantity(item) > 0 && forwarded === 0) return true;
 
-  // fallback tạm cho dữ liệu cũ
-  return item.isDropped === true;
+  // fallback tạm cho dữ liệu cũ - chỉ drop nếu k giao dc gì
+  return item.isDropped === true && forwarded === 0;
 };
 
 export const isItemPartiallyForwarded = (
@@ -35,29 +36,35 @@ export const isItemFullyForwarded = (item: IncomingOrderItem): boolean => {
   return requested > 0 && forwarded === requested;
 };
 
+const getAllItems = (order: IncomingOrder): IncomingOrderItem[] => {
+  const items = order.items ?? [];
+  const ingredients = (order.ingredientItems ?? []) as any as IncomingOrderItem[];
+  return [...items, ...ingredients];
+};
+
 export const getPartiallyForwardedItems = (
   order: IncomingOrder,
 ): IncomingOrderItem[] => {
-  if (!order.items?.length) return [];
-  return order.items.filter(isItemPartiallyForwarded);
+  const items = getAllItems(order);
+  return items.filter(isItemPartiallyForwarded);
 };
 
 export const getDroppedItems = (order: IncomingOrder): IncomingOrderItem[] => {
-  if (!order.items?.length) return [];
-  return order.items.filter(isItemDroppedFromForward);
+  const items = getAllItems(order);
+  return items.filter(isItemDroppedFromForward);
 };
 
 export const getFullyForwardedItems = (
   order: IncomingOrder,
 ): IncomingOrderItem[] => {
-  if (!order.items?.length) return [];
-  return order.items.filter(isItemFullyForwarded);
+  const items = getAllItems(order);
+  return items.filter(isItemFullyForwarded);
 };
 
 export const hasPartialOrDroppedItems = (order: IncomingOrder): boolean => {
-  if (!order.items?.length) return false;
+  const items = getAllItems(order);
 
-  return order.items.some(
+  return items.some(
     (item) => isItemDroppedFromForward(item) || isItemPartiallyForwarded(item),
   );
 };
@@ -65,9 +72,9 @@ export const hasPartialOrDroppedItems = (order: IncomingOrder): boolean => {
 export const hasForwardSnapshotWarning = (
   order: IncomingOrder,
 ): boolean => {
-  if (!order.items?.length) return false;
+  const items = getAllItems(order);
 
-  return order.items.some(
+  return items.some(
     (item) =>
       item.hasForwardSnapshot === true &&
       item.isForwardSnapshotConsistent === false,
@@ -77,9 +84,9 @@ export const hasForwardSnapshotWarning = (
 export const getForwardSnapshotWarnings = (
   order: IncomingOrder,
 ): string[] => {
-  if (!order.items?.length) return [];
+  const items = getAllItems(order);
 
-  return order.items
+  return items
     .map((item) => item.forwardSnapshotWarning?.trim())
     .filter((warning): warning is string => Boolean(warning));
 };

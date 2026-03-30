@@ -27,6 +27,7 @@ import {
   Truck,
   PlusCircle,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 
 import { useStoreOrders } from "@/hooks/storeOrders/useStoreOrders";
@@ -139,8 +140,11 @@ const OrderList: React.FC = () => {
     }).format(date);
   };
 
-  const getTotalQty = (order: StoreOrder) =>
-    order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const getTotalQty = (order: StoreOrder) => {
+    const productQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+    const ingredientQty = (order.ingredientItems ?? []).reduce((sum, item) => sum + item.quantity, 0);
+    return productQty + ingredientQty;
+  };
 
   const canModifyOrder = (order: StoreOrder) => {
     const isLockedByTime =
@@ -185,16 +189,47 @@ const OrderList: React.FC = () => {
     {
       key: "itemsCount",
       label: "Sản phẩm",
-      render: (order: OrderRow) => (
-        <Badge variant="secondary">{order.items.length} SP</Badge>
-      ),
+      render: (order: OrderRow) => {
+        const hasDropped = (order.droppedTotalItems ?? 0) > 0;
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="secondary" className="w-fit">{order.items.length} SP</Badge>
+            {hasDropped && (
+              <Badge variant="outline" className="w-fit text-[10px] text-destructive border-destructive bg-destructive/5 hover:bg-destructive/10 cursor-help" title={`${order.droppedTotalItems} sản phẩm đã bị hủy do thiếu kho`}>
+                <XCircle size={10} className="mr-0.5" /> {order.droppedTotalItems} hủy
+              </Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "totalQty",
       label: "Tổng SL",
-      render: (order: OrderRow) => (
-        <span className="font-medium">{getTotalQty(order)}</span>
-      ),
+      render: (order: OrderRow) => {
+        const requested = order.totalQuantity ?? getTotalQty(order);
+        
+        // Calculate forwarded total from items if missing at root
+        const forwardedItemsQty = order.items.reduce((sum, item) => sum + (item.forwardedQuantity ?? item.quantity), 0);
+        const forwardedIngredientsQty = (order.ingredientItems ?? []).reduce((sum, item) => sum + (item.forwardedQuantity ?? item.quantity), 0);
+        const delivered = order.forwardedTotalQuantity ?? (order.status === "DRAFT" || order.status === "SUBMITTED" ? null : (forwardedItemsQty + forwardedIngredientsQty));
+        
+        const isPartial = delivered != null && delivered > 0 && delivered < requested;
+
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className={`font-medium ${isPartial ? "line-through text-muted-foreground text-xs" : ""}`}>
+              {requested}
+            </span>
+            {isPartial && (
+              <div className="flex items-center gap-1 text-primary font-bold">
+                <span>{delivered}</span>
+                <AlertTriangle size={10} className="text-amber-500" />
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "status",

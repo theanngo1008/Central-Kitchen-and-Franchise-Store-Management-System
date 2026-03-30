@@ -4,12 +4,16 @@ import { AxiosError } from 'axios';
 import {
     getSupplyQueue,
     prepareDelivery,
-    updateDeliveryStatus
+    updateDeliveryStatus,
+    updateDeliveryProductItem,
+    updateDeliveryIngredientItem,
+    getDeliveryDetail
 } from '@/api/coordinator/supplyApi';
 import type {
     SupplyOrderListQuery,
     PrepareDeliveryRequest,
-    UpdateSupplyDeliveryStatusRequest
+    UpdateSupplyDeliveryStatusRequest,
+    UpdateDeliveryItemRequest
 } from '@/types/supply';
 
 export const SUPPLY_QUEUE_KEY = 'supply-queue';
@@ -51,5 +55,44 @@ export function useUpdateDeliveryStatus() {
         onError: (error: AxiosError<{ message: string }>) => {
             toast.error(error?.response?.data?.message || 'Cập nhật trạng thái thất bại');
         }
+    });
+}
+
+export function useUpdateDeliveryItem() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ 
+            deliveryId, 
+            itemId, 
+            type, 
+            data 
+        }: { 
+            deliveryId: number; 
+            itemId: number; 
+            type: 'PRODUCT' | 'INGREDIENT'; 
+            data: UpdateDeliveryItemRequest 
+        }) => {
+            if (type === 'PRODUCT') {
+                return updateDeliveryProductItem(deliveryId, itemId, data);
+            } else {
+                return updateDeliveryIngredientItem(deliveryId, itemId, data);
+            }
+        },
+        onSuccess: () => {
+            toast.success('Đã cập nhật số lượng thành công');
+            queryClient.invalidateQueries({ queryKey: [SUPPLY_QUEUE_KEY] });
+        },
+        onError: (error: AxiosError<{ message: string }>) => {
+            toast.error(error?.response?.data?.message || 'Cập nhật số lượng thất bại');
+        }
+    });
+}
+
+export function useDeliveryDetail(deliveryId?: number) {
+    return useQuery({
+        queryKey: ['delivery-detail', deliveryId],
+        queryFn: () => getDeliveryDetail(deliveryId!),
+        enabled: !!deliveryId,
     });
 }

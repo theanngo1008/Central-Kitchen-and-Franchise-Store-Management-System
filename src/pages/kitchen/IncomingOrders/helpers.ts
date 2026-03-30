@@ -39,14 +39,18 @@ export const getIncomingOrders = (
 };
 
 export const getOrderItemCount = (order: IncomingOrder): number => {
-  return order.items?.length ?? 0;
+  const itemsCount = order.items?.length ?? 0;
+  const ingredientsCount = order.ingredientItems?.length ?? 0;
+  return itemsCount + ingredientsCount;
 };
 
 export const getOrderTotalQuantity = (order: IncomingOrder): number => {
   if (typeof order.totalQuantity === 'number') return order.totalQuantity;
-  if (!order.items?.length) return 0;
 
-  return order.items.reduce((total, item) => total + (item.quantity || 0), 0);
+  const itemsQty = (order.items ?? []).reduce((total, item) => total + (item.quantity || 0), 0);
+  const ingredientsQty = (order.ingredientItems ?? []).reduce((total, item) => total + (item.quantity || 0), 0);
+
+  return itemsQty + ingredientsQty;
 };
 
 export const canLockIncomingOrder = (_order: IncomingOrder): boolean => {

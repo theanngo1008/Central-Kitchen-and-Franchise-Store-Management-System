@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { ShoppingCart, FlaskConical } from "lucide-react";
+import { formatCurrency } from "@/utils";
 
 import OrderDatePicker from "./OrderDatePicker";
 import OrderItemRow, { type OrderDraftItem } from "./OrderItemRow";
@@ -49,8 +50,10 @@ const OrderPanel: React.FC<Props> = ({
   mode = "create",
 }) => {
   const total = useMemo(() => {
-    return items.reduce((sum, it) => sum + (it.price ?? 0) * it.quantity, 0);
-  }, [items]);
+    const productTotal = items.reduce((sum, it) => sum + (it.price ?? 0) * it.quantity, 0);
+    const ingredientTotal = ingredientItems.reduce((sum, it) => sum + (it.price ?? 0) * it.quantity, 0);
+    return productTotal + ingredientTotal;
+  }, [items, ingredientItems]);
 
   const isEmpty = items.length === 0 && ingredientItems.length === 0;
 
@@ -100,9 +103,16 @@ const OrderPanel: React.FC<Props> = ({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{it.ingredientName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {it.quantity} {it.unit}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {it.quantity} {it.unit}
+                        </p>
+                        {it.price != null && (
+                          <p className="text-xs font-medium text-blue-700">
+                             ({formatCurrency(it.price * it.quantity)})
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <button

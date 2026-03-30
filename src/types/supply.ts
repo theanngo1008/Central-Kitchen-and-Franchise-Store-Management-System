@@ -8,6 +8,14 @@ export interface SupplyOrderQueueItemLineResponse {
     droppedQuantity: number;
     isDroppedFromForward: boolean;
     dropReason: string | null;
+
+    // Snapshot fields from BE
+    hasForwardSnapshot?: boolean;
+    isForwardSnapshotConsistent?: boolean;
+    forwardSnapshotWarning?: string;
+    rawForwardSnapshotRequestedQuantity?: number;
+    rawForwardSnapshotForwardedQuantity?: number;
+    rawForwardSnapshotDroppedQuantity?: number;
 }
 
 export interface SupplyOrderQueueIngredientLineResponse {
@@ -19,10 +27,19 @@ export interface SupplyOrderQueueIngredientLineResponse {
     droppedQuantity: number;
     isDroppedFromForward: boolean;
     dropReason: string | null;
+
+    // Snapshot fields from BE
+    hasForwardSnapshot?: boolean;
+    isForwardSnapshotConsistent?: boolean;
+    forwardSnapshotWarning?: string;
+    rawForwardSnapshotRequestedQuantity?: number;
+    rawForwardSnapshotForwardedQuantity?: number;
+    rawForwardSnapshotDroppedQuantity?: number;
 }
 
 export interface SupplyOrderQueueItemResponse {
     storeOrderId: number;
+    deliveryId?: number;
     orderCode: string;
     status: string;
     requestedDeliveryDate: string; // ISO Date String
@@ -76,4 +93,38 @@ export interface ApiResponse<T> {
     success: boolean;
     data: T;
     message?: string;
+}
+export interface UpdateDeliveryItemRequest {
+    quantity: number;
+}
+
+export interface DeliveryBatchDetail {
+    batchId: number;
+    batchCode: string;
+    quantity: number;
+    createdAt: string;
+    expiredAt?: string | null;
+}
+
+export interface DeliveryItemDetailResponse extends SupplyOrderQueueItemLineResponse {
+    availableCentralKitchenBatches?: DeliveryBatchDetail[];
+}
+
+export interface DeliveryIngredientDetailResponse extends SupplyOrderQueueIngredientLineResponse {
+    availableCentralKitchenBatches?: DeliveryBatchDetail[];
+}
+
+export interface DeliveryDetailResponse {
+    deliveryId: number;
+    deliveryPlanId: number;
+    fromCentralKitchenId: number;
+    fromCentralKitchenName: string;
+    toFranchiseId: number;
+    toFranchiseName: string;
+    status: string;
+    plannedDate: string;
+    createdAt: string;
+    confirmedAt?: string | null;
+    productItems: DeliveryItemDetailResponse[];
+    ingredientItems: DeliveryIngredientDetailResponse[];
 }

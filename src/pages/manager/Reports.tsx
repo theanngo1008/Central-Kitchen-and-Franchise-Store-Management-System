@@ -11,25 +11,18 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Legend,
 } from "recharts";
 import {
   Package,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
   Download,
   RefreshCw,
-  FlaskConical,
+  TrendingUp,
   BarChart3,
   Store,
 } from "lucide-react";
 import {
   useInventoryReport,
-  useWastageReport,
   useStorePerformanceReport,
 } from "@/hooks/reports/useReports";
 import { reportsApi } from "@/api/manager/reportsApi";
@@ -62,8 +55,6 @@ const fmt = (n: number) =>
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
-const COLORS = ["#16a34a", "#2563eb", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
-
 const onTimeLabel = (rate?: number | null) => {
   if (rate == null) return { label: "N/A", cls: "text-muted-foreground" };
   if (rate >= 95) return { label: "Xuất sắc", cls: "text-green-600" };
@@ -72,7 +63,7 @@ const onTimeLabel = (rate?: number | null) => {
   return { label: "Chậm trễ", cls: "text-destructive" };
 };
 
-type Tab = "inventory" | "wastage" | "performance";
+type Tab = "inventory" | "performance";
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   INGREDIENT: "Nguyên liệu",
@@ -102,7 +93,6 @@ const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("inventory");
   const [fromDate, setFromDate] = useState(firstDayOfMonth());
   const [toDate, setToDate] = useState(today());
-  const [sortBy, setSortBy] = useState<"lostValue" | "wastedQuantity" | "wasteRate">("lostValue");
 
   // ── Scope state (for Manager/Admin) ──
   const [scopeType, setScopeType] = useState<"kitchen" | "franchise">("kitchen");
@@ -206,22 +196,6 @@ const Reports: React.FC = () => {
         (scopeType === "kitchen" ? !!selectedKitchenId : !!selectedFranchiseId))
   );
 
-  // ── Wastage report ──
-  const wastageQuery = {
-    ...inventoryQuery,
-    sortBy,
-  };
-  const {
-    data: wastageData,
-    isLoading: wastageLoading,
-    refetch: refetchWastage,
-  } = useWastageReport(
-    wastageQuery,
-    activeTab === "wastage" &&
-      (!isManager ||
-        (scopeType === "kitchen" ? !!selectedKitchenId : !!selectedFranchiseId))
-  );
-
   // ── Store Performance report ──
   const perfQuery = { fromDate, toDate, timezoneOffsetMinutes: 420 };
   const {
@@ -231,31 +205,12 @@ const Reports: React.FC = () => {
   } = useStorePerformanceReport(perfQuery, activeTab === "performance" && isManager);
 
   const invItems = invData?.data?.items ?? [];
-  const wastageItems = wastageData?.data?.items ?? [];
   const perfItems = perfData?.data?.items ?? [];
 
   // Derived for inventory
   const invIngredients = invItems.filter((i) => i.itemType === "INGREDIENT");
   const invProducts = invItems.filter((i) => i.itemType === "PRODUCT");
-  const totalClosingValue = invItems.reduce((s, i) => s + i.closingValue, 0);
   const totalWasted = invItems.reduce((s, i) => s + i.wastedQuantity, 0);
-
-  // Derived for wastage chart
-  const wastageChartData = wastageItems.slice(0, 8).map((i) => ({
-    name: i.ingredientName.length > 12 ? i.ingredientName.slice(0, 12) + "…" : i.ingredientName,
-    "Thiệt hại (đ)": i.totalLostValue,
-    "Số lượng": i.wastedQuantity,
-  }));
-
-  const wasteReasonGroups = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const i of wastageItems) {
-      map[i.wasteReason] = (map[i.wasteReason] ?? 0) + i.totalLostValue;
-    }
-    return Object.entries(map)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [wastageItems]);
 
   // Derived for performance chart
   const perfChartData = perfItems.map((i) => ({
@@ -270,13 +225,11 @@ const Reports: React.FC = () => {
 
   const handleRefresh = () => {
     if (activeTab === "inventory") refetchInv();
-    if (activeTab === "wastage") refetchWastage();
     if (activeTab === "performance") refetchPerf();
   };
 
   const TABS = [
     { id: "inventory" as Tab, label: "Xuất - Nhập - Tồn", icon: Package },
-    { id: "wastage" as Tab, label: "Báo cáo Hao hụt", icon: FlaskConical },
     ...(isManager
       ? [{ id: "performance" as Tab, label: "Hiệu suất Cửa hàng", icon: Store }]
       : []),
@@ -286,7 +239,7 @@ const Reports: React.FC = () => {
     <div className="animate-fade-in space-y-6">
       <PageHeader
         title="Báo cáo & Phân tích"
-        subtitle="Inventory, hao hụt và hiệu suất vận hành theo thời gian"
+        subtitle="Inventory và hiệu suất vận hành theo thời gian"
         action={{ label: "Refresh", icon: RefreshCw, onClick: handleRefresh }}
       />
 
@@ -375,20 +328,6 @@ const Reports: React.FC = () => {
             className="w-40"
           />
         </div>
-        {activeTab === "wastage" && (
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1">Sắp xếp theo</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="lostValue">Thiệt hại cao nhất</option>
-              <option value="wastedQuantity">Số lượng hủy</option>
-              <option value="wasteRate">Tỉ lệ hao hụt</option>
-            </select>
-          </div>
-        )}
         <Button size="sm" onClick={handleRefresh}>
           <RefreshCw size={14} className="mr-1.5" /> Tải báo cáo
         </Button>
@@ -483,11 +422,7 @@ const Reports: React.FC = () => {
               {/* Summary stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-card border rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Tổng giá trị tồn kho</p>
-                  <p className="text-xl font-bold text-primary">{fmtCurrency(totalClosingValue)}</p>
-                </div>
-                <div className="bg-card border rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Tổng mặt hàng</p>
+                  <p className="text-xs text-muted-foreground mb-1">Mặt hàng tồn kho</p>
                   <p className="text-xl font-bold">{invItems.length}</p>
                   <p className="text-xs text-muted-foreground">{invIngredients.length} NL / {invProducts.length} BTP</p>
                 </div>
@@ -506,12 +441,6 @@ const Reports: React.FC = () => {
                 </div>
               </div>
 
-              {/* Notes */}
-              {(invData?.data?.notes ?? []).length > 0 && (
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 space-y-1">
-                  {invData!.data.notes.map((n, i) => <p key={i}>⚠️ {n}</p>)}
-                </div>
-              )}
 
               {/* Table */}
               {invItems.length === 0 ? (
@@ -537,8 +466,6 @@ const Reports: React.FC = () => {
                           <th className="px-4 py-3 text-right">Xuất</th>
                           <th className="px-4 py-3 text-right">Hủy</th>
                           <th className="px-4 py-3 text-right">Điều chỉnh</th>
-                          <th className="px-4 py-3 text-right font-semibold text-foreground">Tồn cuối</th>
-                          <th className="px-4 py-3 text-right font-semibold text-foreground">Giá trị tồn</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -566,14 +493,6 @@ const Reports: React.FC = () => {
                                 ? (item.adjustmentQuantity > 0 ? "+" : "") + fmt(item.adjustmentQuantity)
                                 : "–"}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              <span className={item.closingQuantity < 0 ? "text-destructive" : ""}>
-                                {fmt(item.closingQuantity)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-primary">
-                              {fmtCurrency(item.closingValue)}
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -586,150 +505,6 @@ const Reports: React.FC = () => {
         </div>
       )}
 
-      {/* ══ TAB: WASTAGE ══ */}
-      {activeTab === "wastage" && (
-        <div className="space-y-6">
-          {wastageLoading ? (
-            <div className="bg-card rounded-xl border p-10 text-center text-muted-foreground">
-              Đang tải báo cáo hao hụt...
-            </div>
-          ) : (
-            <>
-              {/* Summary */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-card border rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Tổng thiệt hại</p>
-                  <p className="text-xl font-bold text-destructive">
-                    {fmtCurrency(wastageItems.reduce((s, i) => s + i.totalLostValue, 0))}
-                  </p>
-                </div>
-                <div className="bg-card border rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Tổng SL hủy</p>
-                  <p className="text-xl font-bold">
-                    {fmt(wastageItems.reduce((s, i) => s + i.wastedQuantity, 0))}
-                  </p>
-                </div>
-                <div className="bg-card border rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Số loại nguyên liệu bị hủy</p>
-                  <p className="text-xl font-bold">
-                    {new Set(wastageItems.map((i) => i.ingredientId)).size}
-                  </p>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {(wastageData?.data?.notes ?? []).length > 0 && (
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 space-y-1">
-                  {wastageData!.data.notes.map((n, i) => <p key={i}>⚠️ {n}</p>)}
-                </div>
-              )}
-
-              {wastageItems.length === 0 ? (
-                <div className="bg-card rounded-xl border p-10 text-center text-muted-foreground">
-                  Không có hao hụt trong kỳ đã chọn.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Bar chart */}
-                  <div className="bg-card border rounded-xl p-6">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <TrendingDown size={16} className="text-destructive" />
-                      Top nguyên liệu thiệt hại cao nhất
-                    </h3>
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={wastageChartData} margin={{ left: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          formatter={(val: number) => fmtCurrency(val)}
-                        />
-                        <Bar dataKey="Thiệt hại (đ)" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Pie chart by reason */}
-                  <div className="bg-card border rounded-xl p-6">
-                    <h3 className="font-semibold mb-4">Phân bổ thiệt hại theo lý do</h3>
-                    {wasteReasonGroups.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={260}>
-                        <PieChart>
-                          <Pie
-                            data={wasteReasonGroups}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={90}
-                            dataKey="value"
-                            label={({ name, percent }) =>
-                              `${name} ${(percent * 100).toFixed(0)}%`
-                            }
-                            labelLine={false}
-                          >
-                            {wasteReasonGroups.map((_, idx) => (
-                              <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(val: number) => fmtCurrency(val)} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <p className="text-muted-foreground text-sm text-center py-16">Không có dữ liệu</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Detail table */}
-              {wastageItems.length > 0 && (
-                <div className="bg-card border rounded-xl overflow-hidden">
-                  <div className="px-6 py-4 border-b">
-                    <h3 className="font-semibold">Chi tiết hao hụt</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                          <th className="px-4 py-3 text-left">Nguyên liệu</th>
-                          <th className="px-4 py-3 text-center">Lý do</th>
-                          <th className="px-4 py-3 text-right">SL hủy</th>
-                          <th className="px-4 py-3 text-right">Tỉ lệ hao hụt</th>
-                          <th className="px-4 py-3 text-right">Thiệt hại</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {wastageItems.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-muted/20">
-                            <td className="px-4 py-3 font-medium">{item.ingredientName}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
-                                {item.wasteReason}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {fmt(item.wastedQuantity)} {item.unit}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {item.wasteRate != null ? (
-                                <span className={item.wasteRate > 10 ? "text-destructive font-medium" : ""}>
-                                  {fmt(item.wasteRate)}%
-                                </span>
-                              ) : "–"}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-destructive">
-                              {fmtCurrency(item.totalLostValue)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
       {/* ══ TAB: STORE PERFORMANCE ══ */}
       {activeTab === "performance" && (
@@ -775,12 +550,6 @@ const Reports: React.FC = () => {
                 </div>
               </div>
 
-              {/* Notes */}
-              {(perfData?.data?.notes ?? []).length > 0 && (
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 space-y-1">
-                  {perfData!.data.notes.map((n, i) => <p key={i}>⚠️ {n}</p>)}
-                </div>
-              )}
 
               {perfItems.length === 0 ? (
                 <div className="bg-card rounded-xl border p-10 text-center text-muted-foreground">

@@ -25,9 +25,13 @@ export const formatDateTime = (isoString: string): string => {
  * Example: 35000 -> "35.000 ₫"
  */
 export const formatCurrency = (amount: number): string => {
+    // If amount is small (e.g. 0.06 VND), we should show decimals to avoid rounding to 0
+    const fractionDigits = (amount > 0 && amount < 1) ? 3 : (amount % 1 !== 0 ? 2 : 0);
     return new Intl.NumberFormat('vi-VN', {
         style: 'currency',
-        currency: 'VND'
+        currency: 'VND',
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: 4,
     }).format(amount);
 };
 

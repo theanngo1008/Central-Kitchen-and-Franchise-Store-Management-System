@@ -1,6 +1,7 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/utils";
 import type { Ingredient } from "@/types/ingredient";
 
 type Props = {
@@ -73,8 +74,11 @@ const IngredientCatalogList: React.FC<Props> = ({
                 </div>
 
                 <div className="text-right shrink-0 ml-4">
-                  <p className="font-semibold text-muted-foreground text-sm">
-                    {item.unit}
+                  <p className="font-semibold text-primary">
+                    {formatCurrency(item.price)}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase">
+                    / {item.unit}
                   </p>
                 </div>
               </div>

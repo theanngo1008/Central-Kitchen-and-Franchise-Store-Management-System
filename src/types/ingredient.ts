@@ -9,6 +9,7 @@ export interface Ingredient {
   safetyStock: number;
   wasteThreshold: number;
   status: IngredientStatus;
+  price: number;
   createdAt?: string;
   updatedAt: string;
 }

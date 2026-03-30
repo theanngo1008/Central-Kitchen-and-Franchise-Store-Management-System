@@ -7,6 +7,14 @@ export type ReceivingStatus =
 
 export type ReceivingItemType = "PRODUCT" | "INGREDIENT";
 
+export interface ReceivingBatchDetail {
+  batchId: number;
+  batchCode: string;
+  quantity: number;
+  createdAt: string;
+  expiredAt?: string | null;
+}
+
 export interface PendingReceivingItem {
   receivingId: number;
   deliveryCode: string;
@@ -33,6 +41,12 @@ export interface ReceivingDetailItem {
   deliveredQuantity: number;
   receivedQuantity?: number;
 
+  // New fields from backend (Transit Stock Logic)
+  availableInCentralKitchenQuantity?: number;
+  availableCentralKitchenBatches?: ReceivingBatchDetail[];
+  creditedToFranchiseQuantity?: number;
+  creditedToFranchiseBatches?: ReceivingBatchDetail[];
+
   // Backend drop fields from ReceivingDetailResponse
   isDropped?: boolean | null;
   droppedQuantity?: number | null;
@@ -57,13 +71,6 @@ export interface ReceivingDetail {
   items: ReceivingDetailItem[];
 }
 
-export interface ConfirmReceivingItemPayload {
-  itemType: ReceivingItemType | string;
-  itemId: number;
-  receivedQuantity: number;
-}
-
 export interface ConfirmReceivingPayload {
   note: string;
-  items: ConfirmReceivingItemPayload[];
 }

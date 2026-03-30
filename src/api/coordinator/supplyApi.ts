@@ -3,10 +3,13 @@ import type {
     SupplyOrderListQuery,
     PrepareDeliveryRequest,
     UpdateSupplyDeliveryStatusRequest,
-    SupplyOrderQueueItemResponse
+    SupplyOrderQueueItemResponse,
+    UpdateDeliveryItemRequest,
+    DeliveryDetailResponse
 } from '@/types/supply';
 
 const ENDPOINT = '/supply/orders';
+const DELIVERIES_ENDPOINT = '/deliveries';
 
 export const getSupplyQueue = async (
     params?: SupplyOrderListQuery
@@ -39,4 +42,26 @@ export const updateDeliveryStatus = async (
     data: UpdateSupplyDeliveryStatusRequest
 ): Promise<SupplyOrderQueueItemResponse> => {
     return patch<SupplyOrderQueueItemResponse>(`${ENDPOINT}/${orderId}/delivery-status`, data);
+};
+
+export const updateDeliveryProductItem = async (
+    deliveryId: number,
+    productId: number,
+    data: UpdateDeliveryItemRequest
+): Promise<void> => {
+    return patch<void>(`${DELIVERIES_ENDPOINT}/${deliveryId}/product-items/${productId}`, data);
+};
+
+export const updateDeliveryIngredientItem = async (
+    deliveryId: number,
+    ingredientId: number,
+    data: UpdateDeliveryItemRequest
+): Promise<void> => {
+    return patch<void>(`${DELIVERIES_ENDPOINT}/${deliveryId}/ingredient-items/${ingredientId}`, data);
+};
+
+export const getDeliveryDetail = async (
+    deliveryId: number
+): Promise<DeliveryDetailResponse> => {
+    return get<DeliveryDetailResponse>(`${DELIVERIES_ENDPOINT}/${deliveryId}`);
 };

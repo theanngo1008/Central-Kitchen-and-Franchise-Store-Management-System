@@ -12,7 +12,6 @@ import {
 } from "@/hooks/store/useReceiving";
 
 import type {
-  ConfirmReceivingItemPayload,
   ConfirmReceivingPayload,
 } from "@/types/store/receiving.types";
 
@@ -53,15 +52,8 @@ const ReceiveGoods: React.FC = () => {
   const handleConfirm = () => {
     if (!selectedReceivingId || !detail || !franchiseId) return;
 
-    const items: ConfirmReceivingItemPayload[] = detail.items.map((item) => ({
-      itemType: item.itemType,
-      itemId: item.itemId,
-      receivedQuantity: item.deliveredQuantity,
-    }));
-
     const payload: ConfirmReceivingPayload = {
       note: note.trim(),
-      items,
     };
 
     confirmMutation.mutate(

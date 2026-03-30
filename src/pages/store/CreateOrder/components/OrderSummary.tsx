@@ -1,19 +1,15 @@
 import React from "react";
+import { formatCurrency } from "@/utils";
 
 type Props = {
   total: number;
 };
 
 const OrderSummary: React.FC<Props> = ({ total }) => {
-  const text = new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(total);
-
   return (
-    <div className="flex items-center justify-between text-lg font-semibold pt-2">
+    <div className="flex items-center justify-between text-lg font-semibold pt-2 border-t mt-2">
       <span>Tổng cộng</span>
-      <span>{text}</span>
+      <span className="text-primary">{formatCurrency(total)}</span>
     </div>
   );
 };

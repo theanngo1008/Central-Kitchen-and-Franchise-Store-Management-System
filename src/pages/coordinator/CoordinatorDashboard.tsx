@@ -102,7 +102,7 @@ const CoordinatorDashboard: React.FC = () => {
           subtitle={`Trong tổng số ${data.orderStatusSummary.total} đơn mới`}
           icon={ClipboardList}
           variant="warning"
-          onClick={() => navigate('/coordinator/orders')}
+          onClick={() => navigate('supply-queue')}
         />
         <MetricCard
           title="Đơn đang chuẩn bị"
@@ -110,7 +110,7 @@ const CoordinatorDashboard: React.FC = () => {
           subtitle={`Sẵn sàng: ${data.orderStatusSummary.readyToDeliverCount} đơn`}
           icon={Calendar}
           variant="primary"
-          onClick={() => navigate('/coordinator/orders')}
+          onClick={() => navigate('coordinator/supply-queue')}
         />
         <MetricCard
           title="Đơn đang giao"

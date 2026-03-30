@@ -205,6 +205,14 @@
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
   }
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s infinite ease-in-out;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(0.995); }
 }
 
 @keyframes fadeIn {

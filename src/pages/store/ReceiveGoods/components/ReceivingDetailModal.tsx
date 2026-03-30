@@ -43,7 +43,7 @@ const ReceivingDetailModal: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             Chi tiết nhận hàng
@@ -58,25 +58,29 @@ const ReceivingDetailModal: React.FC<Props> = ({
         ) : !detail ? (
           <div className="p-4 text-center text-muted-foreground">Đang đóng...</div>
         ) : (
-          <div className="space-y-5">
-            {/* Drop warning banner — shown at top so user sees it immediately */}
-            {droppedCount > 0 && (
-              <div className="rounded-xl border-2 border-destructive/50 bg-destructive/5 px-4 py-3 flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-destructive">
-                    {droppedCount} sản phẩm không được giao trong chuyến này
-                  </p>
-                  <p className="text-sm text-destructive/80 mt-0.5">
-                    Do tồn kho tại Bếp Trung Tâm không đủ. Cửa hàng vui lòng kiểm tra
-                    danh sách bên dưới để biết sản phẩm nào bị ảnh hưởng.
-                  </p>
-                </div>
+          <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-muted/30 border rounded-xl p-3 flex flex-col justify-between">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Tổng mặt hàng</p>
+                <p className="text-xl font-bold">{detail.items.length} SP</p>
               </div>
-            )}
+              <div className="bg-muted/30 border rounded-xl p-3 flex flex-col justify-between">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Số lượng giao</p>
+                <p className="text-xl font-bold text-primary">
+                  {detail.items.reduce((s, i) => s + (i.deliveredQuantity ?? 0), 0)}
+                </p>
+              </div>
+              <div className="bg-muted/30 border rounded-xl p-3 flex flex-col justify-between">
+                <p className="text-[10px] text-destructive uppercase font-bold tracking-wider">Bị hủy</p>
+                <p className={`text-xl font-bold ${(detail.items.reduce((s, i) => s + (i.droppedQuantity ?? 0), 0)) > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                  {detail.items.reduce((s, i) => s + (i.droppedQuantity ?? 0), 0)}
+                </p>
+              </div>
+            </div>
 
             <ReceivingInfoGrid detail={detail} />
-            <ReceivingItemsTable items={detail.items} />
+            <ReceivingItemsTable items={detail.items} status={detail.status} />
             <ConfirmReceivingSection
               status={detail.status}
               note={note}

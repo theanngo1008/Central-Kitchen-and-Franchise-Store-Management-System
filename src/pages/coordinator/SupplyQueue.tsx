@@ -24,6 +24,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import DeliveryItemEditModal from './components/DeliveryItemEditModal';
+import { Edit } from 'lucide-react';
 
 const SupplyQueue: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +47,7 @@ const SupplyQueue: React.FC = () => {
   // Modal States
   const [isPrepareModalOpen, setIsPrepareModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<SupplyOrderQueueItemResponse | null>(null);
   const [note, setNote] = useState('');
   const [targetStatus, setTargetStatus] = useState('');
@@ -95,9 +98,14 @@ const SupplyQueue: React.FC = () => {
     switch (order.status) {
       case 'FORWARDED_TO_SUPPLY':
         return (
-          <Button size="sm" onClick={() => handleOpenPrepareModal(order)}>
-            <Box size={14} className="mr-1" /> Chuẩn bị giao hàng
-          </Button>
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="outline" onClick={() => { setSelectedOrder(order); setIsEditModalOpen(true); }}>
+              <Edit size={14} className="mr-1" /> Chỉnh SL
+            </Button>
+            <Button size="sm" onClick={() => handleOpenPrepareModal(order)}>
+              <Box size={14} className="mr-1" /> Chuẩn bị giao hàng
+            </Button>
+          </div>
         );
       case 'PREPARING':
         return (
@@ -249,50 +257,120 @@ const SupplyQueue: React.FC = () => {
                             {/* Products */}
                             {order.items.length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold mb-2">Chi tiết sản phẩm ({order.items.length})</h4>
-                                <div className="space-y-2">
-                                  {order.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
-                                      <div className="flex flex-col">
-                                        <span>{item.productName} {item.sku ? `(${item.sku})` : ''}</span>
-                                        {item.isDroppedFromForward && (
-                                          <span className="text-[10px] text-destructive font-medium">Bị hủy: {item.dropReason || 'Không đủ tồn kho'}</span>
-                                        )}
-                                      </div>
-                                      <div className="flex flex-col items-end">
-                                        <span className="font-medium">{item.quantity} {item.unit}</span>
-                                        {item.forwardedQuantity > 0 && item.forwardedQuantity < item.quantity && (
-                                          <span className="text-[10px] text-green-600 font-medium">Giao: {item.forwardedQuantity} {item.unit}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                  <Box size={14} className="text-primary" />
+                                  Chi tiết sản phẩm ({order.items.length})
+                                </h4>
+                                <div className="bg-background rounded-lg border overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-muted/50 border-b">
+                                      <tr className="text-muted-foreground">
+                                        <th className="px-3 py-2 text-left font-medium">Tên sản phẩm</th>
+                                        <th className="px-3 py-2 text-center font-medium">Yêu cầu</th>
+                                        <th className="px-3 py-2 text-center font-medium">Thực giao</th>
+                                        <th className="px-3 py-2 text-center font-medium">Trạng thái</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                      {order.items.map((item, idx) => (
+                                        <tr key={idx} className={item.isDroppedFromForward ? "bg-destructive/5" : "hover:bg-muted/5"}>
+                                          <td className="px-3 py-2">
+                                            <p className={`font-medium ${item.isDroppedFromForward ? "line-through text-muted-foreground" : ""}`}>
+                                              {item.productName}
+                                            </p>
+                                            {item.sku && <p className="text-[10px] text-muted-foreground">SKU: {item.sku}</p>}
+                                          </td>
+                                          <td className="px-3 py-2 text-center font-medium">
+                                            {item.quantity} {item.unit}
+                                          </td>
+                                          <td className="px-3 py-2 text-center font-bold">
+                                            {item.isDroppedFromForward ? (
+                                              <span className="text-destructive">0 {item.unit}</span>
+                                            ) : (
+                                              <span className={item.forwardedQuantity < item.quantity ? "text-amber-600" : "text-green-600"}>
+                                                {item.forwardedQuantity} {item.unit}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2 text-center">
+                                            {item.isDroppedFromForward ? (
+                                              <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-medium">
+                                                Bị hủy: {item.dropReason || "Hết hàng"}
+                                              </span>
+                                            ) : item.forwardedQuantity < item.quantity ? (
+                                              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                Giao thiếu
+                                              </span>
+                                            ) : (
+                                              <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                Đủ hàng
+                                              </span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </div>
                               </div>
                             )}
+
                             {/* Ingredients */}
                             {(order.ingredientItems ?? []).length > 0 && (
                               <div>
-                                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-blue-700">
-                                  <FlaskConical size={14} /> Nguyên liệu ({order.ingredientItems!.length})
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                                  <FlaskConical size={14} />
+                                  Nguyên liệu ({order.ingredientItems!.length})
                                 </h4>
-                                <div className="space-y-2">
-                                  {order.ingredientItems!.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-sm py-1 border-b border-blue-100 last:border-0">
-                                      <div className="flex flex-col">
-                                        <span>{item.ingredientName}</span>
-                                        {item.isDroppedFromForward && (
-                                          <span className="text-[10px] text-destructive font-medium">Bị hủy: {item.dropReason || 'Không đủ tồn kho'}</span>
-                                        )}
-                                      </div>
-                                      <div className="flex flex-col items-end">
-                                        <span className="font-medium">{item.quantity} {item.unit}</span>
-                                        {item.forwardedQuantity > 0 && item.forwardedQuantity < item.quantity && (
-                                          <span className="text-[10px] text-green-600 font-medium">Giao: {item.forwardedQuantity} {item.unit}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
+                                <div className="bg-blue-50/30 rounded-lg border border-blue-100 overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-blue-100/50 border-b border-blue-100">
+                                      <tr className="text-blue-700">
+                                        <th className="px-3 py-2 text-left font-medium">Tên nguyên liệu</th>
+                                        <th className="px-3 py-2 text-center font-medium">Yêu cầu</th>
+                                        <th className="px-3 py-2 text-center font-medium">Thực giao</th>
+                                        <th className="px-3 py-2 text-center font-medium">Trạng thái</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-blue-100">
+                                      {order.ingredientItems!.map((item, idx) => (
+                                        <tr key={idx} className={item.isDroppedFromForward ? "bg-destructive/5" : "hover:bg-blue-100/20"}>
+                                          <td className="px-3 py-2">
+                                            <p className={`font-medium ${item.isDroppedFromForward ? "line-through text-muted-foreground" : ""}`}>
+                                              {item.ingredientName}
+                                            </p>
+                                          </td>
+                                          <td className="px-3 py-2 text-center font-medium">
+                                            {item.quantity} {item.unit}
+                                          </td>
+                                          <td className="px-3 py-2 text-center font-bold">
+                                            {item.isDroppedFromForward ? (
+                                              <span className="text-destructive">0 {item.unit}</span>
+                                            ) : (
+                                              <span className={item.forwardedQuantity < item.quantity ? "text-amber-600" : "text-green-600"}>
+                                                {item.forwardedQuantity} {item.unit}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2 text-center">
+                                            {item.isDroppedFromForward ? (
+                                              <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-medium">
+                                                Bị hủy
+                                              </span>
+                                            ) : item.forwardedQuantity < item.quantity ? (
+                                              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                Thiếu
+                                              </span>
+                                            ) : (
+                                              <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                Đủ
+                                              </span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </div>
                               </div>
                             )}
@@ -405,6 +483,13 @@ const SupplyQueue: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delivery Item Edit Modal */}
+      <DeliveryItemEditModal 
+        open={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        order={selectedOrder}
+      />
     </div>
   );
 };

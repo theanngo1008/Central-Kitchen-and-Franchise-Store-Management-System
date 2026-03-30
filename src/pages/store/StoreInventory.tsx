@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, AlertTriangle, ChevronDown, ChevronRight, Package, Box, RefreshCw } from 'lucide-react';
+import { Search, AlertTriangle, ChevronDown, ChevronRight, Package, Box, RefreshCw, Truck } from 'lucide-react';
 import { useStoreInventorySummary } from '@/hooks/store/useInventory';
+import { usePendingReceivings } from '@/hooks/store/useReceiving';
 import { authApi } from '@/api';
 
 const StoreInventory: React.FC = () => {
@@ -14,9 +15,12 @@ const StoreInventory: React.FC = () => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const { data: summaryResponse, isLoading, isError, refetch } = useStoreInventorySummary(franchiseId!);
+  const { data: receivings = [] } = usePendingReceivings(franchiseId!);
 
   // The wrapper guarantees the normalized payload. We get `items` if it exists.
   const inventoryItems = summaryResponse?.items || [];
+  
+  const pendingReceiptCount = receivings.filter(r => r.status === 'DELIVERED').length;
 
   const filteredItems = inventoryItems.filter(item =>
     item.itemName.toLowerCase().includes(search.toLowerCase())
@@ -35,18 +39,22 @@ const StoreInventory: React.FC = () => {
   };
 
   if (!franchiseId) {
-    return <div className="p-8 text-center">Không tìm thấy mã Cửa hàng.</div>;
+    return <div className="p-8 text-center border rounded-xl bg-muted/20">Không tìm thấy mã Cửa hàng.</div>;
   }
 
   if (isLoading) {
-    return <div className="p-8 text-center text-muted-foreground">Đang tải thông tin tồn kho...</div>;
+    return <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
+      <RefreshCw className="h-8 w-8 animate-spin text-primary/40" />
+      <p>Đang tải thông tin tồn kho...</p>
+    </div>;
   }
 
   if (isError) {
     return (
-      <div className="p-8 text-center text-destructive">
-        <p className="mb-4">Không thể tải dữ liệu tồn kho.</p>
-        <Button onClick={() => refetch()} variant="outline">
+      <div className="p-12 text-center border-2 border-dashed rounded-2xl bg-destructive/5 max-w-md mx-auto my-10">
+        <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-3" />
+        <p className="mb-6 font-medium text-destructive">Không thể tải dữ liệu tồn kho.</p>
+        <Button onClick={() => refetch()} variant="outline" className="border-destructive/30 hover:bg-destructive/10">
           <RefreshCw className="w-4 h-4 mr-2" /> Thử lại
         </Button>
       </div>
@@ -57,30 +65,48 @@ const StoreInventory: React.FC = () => {
     <div className="animate-fade-in pb-10">
       <PageHeader 
         title="Tồn Kho Cửa Hàng" 
-        subtitle={`Quản lý toàn bộ hàng hóa và nguyên liệu của cửa hàng`}
+        subtitle={`Quản lý toàn bộ hàng hóa và nguyên liệu đang có tại cửa hàng`}
       />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-card rounded-xl border p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground flex items-center gap-1"><Box size={14}/>Tổng phân loại mặt hàng</p>
-          <p className="text-2xl font-semibold mt-1">{inventoryItems.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-card rounded-xl border p-4 shadow-sm group hover:border-primary/50 transition-colors">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1 font-medium bg-muted/50 w-fit px-2 py-0.5 rounded-md">
+            <Box size={14} className="text-primary"/> TỔNG MẶT HÀNG
+          </p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{inventoryItems.length}</p>
         </div>
-        <div className="bg-card rounded-xl border p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground flex items-center gap-1"><Package size={14}/>Thành phẩm</p>
-          <p className="text-2xl font-semibold mt-1">
+        
+        <div className="bg-card rounded-xl border p-4 shadow-sm group hover:border-blue-500/50 transition-colors">
+          <p className="text-xs text-blue-600 flex items-center gap-1.5 mb-1 font-medium bg-blue-50 w-fit px-2 py-0.5 rounded-md">
+            <Package size={14}/> THÀNH PHẨM
+          </p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">
             {inventoryItems.filter(i => i.itemType === 'PRODUCT').length}
           </p>
         </div>
-        <div className="bg-card rounded-xl border p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground flex items-center gap-1">Nguyên liệu</p>
-          <p className="text-2xl font-semibold mt-1">
-            {inventoryItems.filter(i => i.itemType === 'INGREDIENT').length}
+
+        <div className="bg-card rounded-xl border p-4 shadow-sm relative overflow-hidden group hover:border-amber-500/50 transition-colors">
+          <p className="text-xs text-amber-600 flex items-center gap-1.5 mb-1 font-medium bg-amber-50 w-fit px-2 py-0.5 rounded-md">
+            <Truck size={14}/> HÀNG ĐANG VỀ
           </p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{pendingReceiptCount}</p>
+          <div className="absolute right-3 bottom-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Truck size={40} />
+          </div>
+          {pendingReceiptCount > 0 && (
+             <span className="absolute top-2 right-2 flex h-2 w-2">
+               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+             </span>
+          )}
         </div>
-        <div className="bg-card rounded-xl border p-4 shadow-sm bg-destructive/5 border-destructive/20">
-          <p className="text-sm text-destructive flex items-center gap-1"><AlertTriangle size={14}/>Cảnh báo sắp hết</p>
-          <p className="text-2xl font-semibold text-destructive mt-1">{lowStockCount}</p>
+
+        <div className="bg-card rounded-xl border p-4 shadow-sm bg-destructive/5 border-destructive/10 group hover:border-destructive/50 transition-colors">
+          <p className="text-xs text-destructive flex items-center gap-1.5 mb-1 font-medium bg-destructive/10 w-fit px-2 py-0.5 rounded-md">
+            <AlertTriangle size={14}/> CẢNH BÁO HẾT HÀNG
+          </p>
+          <p className="text-3xl font-bold tracking-tight text-destructive">{lowStockCount}</p>
         </div>
       </div>
 
