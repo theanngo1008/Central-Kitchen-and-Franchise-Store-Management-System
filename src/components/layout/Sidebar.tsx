@@ -115,31 +115,31 @@ const getNavItems = (
         path: "/coordinator",
         icon: <LayoutDashboard size={20} />,
       },
-      {
-        label: "Tổng hợp đơn hàng",
-        path: "/coordinator/orders",
-        icon: <ClipboardList size={20} />,
-      },
-      {
-        label: "Điều phối",
-        path: "/coordinator/coordination",
-        icon: <Factory size={20} />,
-      },
+      // {
+      //   label: "Tổng hợp đơn hàng",
+      //   path: "/coordinator/orders",
+      //   icon: <ClipboardList size={20} />,
+      // },
+      // {
+      //   label: "Điều phối",
+      //   path: "/coordinator/coordination",
+      //   icon: <Factory size={20} />,
+      // },
       {
         label: "Hàng chờ xuất kho",
         path: "/coordinator/supply-queue",
         icon: <Package size={20} />,
       },
-      {
-        label: "Theo dõi giao hàng",
-        path: "/coordinator/tracking",
-        icon: <Truck size={20} />,
-      },
-      {
-        label: "Xử lý sự cố",
-        path: "/coordinator/exceptions",
-        icon: <AlertTriangle size={20} />,
-      },
+      // {
+      //   label: "Theo dõi giao hàng",
+      //   path: "/coordinator/tracking",
+      //   icon: <Truck size={20} />,
+      // },
+      // {
+      //   label: "Xử lý sự cố",
+      //   path: "/coordinator/exceptions",
+      //   icon: <AlertTriangle size={20} />,
+      // },
     ],
     manager: [
       {
