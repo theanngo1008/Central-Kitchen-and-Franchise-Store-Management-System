@@ -66,6 +66,11 @@ const getNavItems = (
         path: `/stores/${franchiseId}/inventory`,
         icon: <Warehouse size={20} />,
       },
+      {
+        label: "Lịch sử tồn kho",
+        path: `/stores/${franchiseId}/inventory-history`,
+        icon: <History size={20} />,
+      },
     ],
     central_kitchen: [
       {

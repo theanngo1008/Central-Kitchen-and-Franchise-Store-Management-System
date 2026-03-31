@@ -15,6 +15,7 @@ import StoreOrderDetail from "@/pages/store/StoreOrderDetail";
 import OrderList from "@/pages/store/OrderList";
 import ReceiveGoods from "@/pages/store/ReceiveGoods";
 import StoreInventory from "@/pages/store/StoreInventory";
+import StoreInventoryHistory from "@/pages/store/StoreInventoryHistory";
 // Kitchen Pages
 import KitchenDashboard from "@/pages/kitchen/KitchenDashboard";
 import IncomingOrders from "@/pages/kitchen/IncomingOrders";
@@ -84,6 +85,10 @@ const App = () => (
               <Route
                 path="/stores/:storeId/inventory"
                 element={<StoreInventory />}
+              />
+              <Route
+                path="/stores/:storeId/inventory-history"
+                element={<StoreInventoryHistory />}
               />
               <Route
                 path="/stores/:storeId/orders/:orderId"
