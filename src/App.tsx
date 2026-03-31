@@ -22,6 +22,7 @@ import ProductionPlanning from "@/pages/kitchen/ProductionPlanning";
 import ProductionSummary from "@/pages/kitchen/ProductionSummary";
 import StorePackaging from "@/pages/kitchen/StorePackaging";
 import KitchenInventory from "@/pages/kitchen/KitchenInventory/index";
+import KitchenInventoryHistory from "@/pages/kitchen/KitchenInventoryHistory";
 // Coordinator Pages
 import CoordinatorDashboard from "@/pages/coordinator/CoordinatorDashboard";
 import AggregatedOrders from "@/pages/coordinator/AggregatedOrders";
@@ -101,6 +102,11 @@ const App = () => (
               />
               <Route path="/kitchen/packaging" element={<StorePackaging />} />
               <Route path="/kitchen/inventory" element={<KitchenInventory />} />
+
+              <Route
+                path="/kitchen/inventory-history"
+                element={<KitchenInventoryHistory />}
+              />
               {/* Coordinator Routes */}
               <Route path="/coordinator" element={<CoordinatorDashboard />} />
               <Route

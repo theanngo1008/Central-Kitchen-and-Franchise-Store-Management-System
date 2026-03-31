@@ -26,6 +26,7 @@ import {
   Layers,
   PackageCheck,
   Leaf,
+  History,
 } from "lucide-react";
 
 interface NavItem {
@@ -97,6 +98,11 @@ const getNavItems = (
         path: "/kitchen/inventory",
         icon: <Warehouse size={20} />,
       },
+      {
+        label: "Lịch sử tồn kho",
+        path: "/kitchen/inventory-history",
+        icon: <History size={20} />,
+      },
     ],
     supply_coordinator: [
       {
@@ -131,13 +137,41 @@ const getNavItems = (
       },
     ],
     manager: [
-      { label: 'Trang chủ', path: '/manager', icon: <LayoutDashboard size={20} /> },
-      { label: 'Menu trà sữa', path: '/manager/products', icon: <Coffee size={20} /> },
-      { label: 'Nguyên vật liệu', path: '/manager/ingredients', icon: <Leaf size={20} /> },
-      { label: 'Nhà cung cấp', path: '/manager/suppliers', icon: <Truck size={20} /> },
-      { label: 'Danh mục cửa hàng', path: '/manager/store-catalog', icon: <Store size={20} /> },
-      { label: 'Công thức & BOM', path: '/manager/recipes', icon: <BookOpen size={20} /> },
-      { label: 'Tồn kho tổng', path: '/manager/inventory', icon: <Warehouse size={20} /> },
+      {
+        label: "Trang chủ",
+        path: "/manager",
+        icon: <LayoutDashboard size={20} />,
+      },
+      {
+        label: "Menu trà sữa",
+        path: "/manager/products",
+        icon: <Coffee size={20} />,
+      },
+      {
+        label: "Nguyên vật liệu",
+        path: "/manager/ingredients",
+        icon: <Leaf size={20} />,
+      },
+      {
+        label: "Nhà cung cấp",
+        path: "/manager/suppliers",
+        icon: <Truck size={20} />,
+      },
+      {
+        label: "Danh mục cửa hàng",
+        path: "/manager/store-catalog",
+        icon: <Store size={20} />,
+      },
+      {
+        label: "Công thức & BOM",
+        path: "/manager/recipes",
+        icon: <BookOpen size={20} />,
+      },
+      {
+        label: "Tồn kho tổng",
+        path: "/manager/inventory",
+        icon: <Warehouse size={20} />,
+      },
     ],
     admin: [
       {
