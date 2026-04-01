@@ -32,21 +32,24 @@ import type { IncomingOrdersFilter } from "./helpers";
 import {
   INCOMING_ORDER_DEFAULT_FILTER,
   getIncomingOrders,
-  getInsufficientStockItems,
-  hasSufficientCentralKitchenStock,
   sortOrdersByNewest,
 } from "./helpers";
 
 const IncomingOrdersPage: React.FC = () => {
   const { user } = useAuth();
 
-  const centralKitchenId = Number(localStorage.getItem("centralKitchenId") ?? 0);
+  const centralKitchenId = Number(
+    localStorage.getItem("centralKitchenId") ?? 0,
+  );
 
   const [filter, setFilter] = useState<IncomingOrdersFilter>(
     INCOMING_ORDER_DEFAULT_FILTER,
   );
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [confirmForwardAction, setConfirmForwardAction] = useState<{ order: IncomingOrder; note: string } | null>(null);
+  const [confirmForwardAction, setConfirmForwardAction] = useState<{
+    order: IncomingOrder;
+    note: string;
+  } | null>(null);
 
   const queryParams = useMemo<StoreOrderQuery>(
     () => ({
@@ -75,7 +78,9 @@ const IncomingOrdersPage: React.FC = () => {
 
   const selectedOrder = useMemo<IncomingOrder | null>(() => {
     if (!selectedOrderResponse) return null;
-    return (selectedOrderResponse as any)?.data ?? selectedOrderResponse ?? null;
+    return (
+      (selectedOrderResponse as any)?.data ?? selectedOrderResponse ?? null
+    );
   }, [selectedOrderResponse]);
 
   const lockIncomingOrderMutation = useLockIncomingOrder();
@@ -96,9 +101,9 @@ const IncomingOrdersPage: React.FC = () => {
       if (selectedOrderId) {
         await refetchDetail();
       }
-      toast.success("Incoming orders refreshed");
+      toast.success("Đã làm mới danh sách đơn hàng.");
     } catch {
-      toast.error("Failed to refresh incoming orders");
+      toast.error("Không thể làm mới danh sách đơn hàng.");
     }
   };
 
@@ -115,7 +120,7 @@ const IncomingOrdersPage: React.FC = () => {
       const franchiseId = Number(order.franchiseId ?? 0);
 
       if (!franchiseId) {
-        toast.error("Missing franchiseId. Cannot receive this order.");
+        toast.error("Thiếu franchiseId, không thể tiếp nhận đơn hàng này.");
         return;
       }
 
@@ -127,13 +132,13 @@ const IncomingOrdersPage: React.FC = () => {
         (latestDetailResponse as any)?.data ?? latestDetailResponse;
 
       if (!latestOrder) {
-        toast.error("Unable to load latest order detail.");
+        toast.error("Không thể tải chi tiết đơn hàng mới nhất.");
         return;
       }
 
       if (latestOrder.status !== "SUBMITTED") {
         toast.error(
-          `Order SO-${order.storeOrderId} is currently ${latestOrder.status}. Please refresh and try again.`,
+          `Đơn SO-${order.storeOrderId} hiện đang ở trạng thái ${latestOrder.status}. Vui lòng làm mới và thử lại.`,
         );
 
         await refetch();
@@ -168,16 +173,19 @@ const IncomingOrdersPage: React.FC = () => {
       toast.success(
         receiveResult.message ||
           lockResponse?.message ||
-          `Order SO-${order.storeOrderId} received successfully.`,
+          `Đã tiếp nhận đơn SO-${order.storeOrderId} thành công.`,
       );
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to receive incoming order.",
+        error?.response?.data?.message || "Tiếp nhận đơn hàng thất bại.",
       );
     }
   };
 
-  const handleForwardOrderTrigger = (order: IncomingOrder, note: string = "") => {
+  const handleForwardOrderTrigger = (
+    order: IncomingOrder,
+    note: string = "",
+  ) => {
     setConfirmForwardAction({ order, note });
   };
 
@@ -194,13 +202,13 @@ const IncomingOrdersPage: React.FC = () => {
         (latestDetailResponse as any)?.data ?? latestDetailResponse;
 
       if (!latestOrder) {
-        toast.error("Unable to load latest order detail.");
+        toast.error("Không thể tải chi tiết đơn hàng mới nhất.");
         return;
       }
 
       if (latestOrder.status !== "RECEIVED_BY_KITCHEN") {
         toast.error(
-          `Order SO-${order.storeOrderId} is currently ${latestOrder.status}. Please refresh and try again.`,
+          `Đơn SO-${order.storeOrderId} hiện đang ở trạng thái ${latestOrder.status}. Vui lòng làm mới và thử lại.`,
         );
 
         await refetch();
@@ -211,7 +219,6 @@ const IncomingOrdersPage: React.FC = () => {
 
         return;
       }
-
 
       const result = await forwardIncomingOrderMutation.mutateAsync({
         centralKitchenId,
@@ -229,12 +236,23 @@ const IncomingOrdersPage: React.FC = () => {
 
       toast.success(
         result.message ||
-          `Order SO-${order.storeOrderId} forwarded to supply successfully.`,
+          `Đã chuyển đơn SO-${order.storeOrderId} sang Cung ứng thành công.`,
       );
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to forward order to supply.",
-      );
+      const apiErrors = error?.response?.data?.errors;
+      const firstError = Array.isArray(apiErrors) ? apiErrors[0] : undefined;
+      const fallbackMessage = error?.response?.data?.message;
+
+      const isNoForwardableLinesError =
+        (typeof firstError === "string" &&
+          firstError.includes("No order lines can be forwarded")) ||
+        fallbackMessage === "Internal server error.";
+
+      const forwardErrorMessage = isNoForwardableLinesError
+        ? "Không còn mặt hàng nào đủ tồn kho để chuyển sang Cung ứng."
+        : firstError || fallbackMessage || "Chuyển đơn sang Cung ứng thất bại.";
+
+      toast.error(forwardErrorMessage);
     }
   };
 
@@ -259,11 +277,11 @@ const IncomingOrdersPage: React.FC = () => {
 
       toast.success(
         result.message ||
-          `Processing note updated for order SO-${order.storeOrderId}.`,
+          `Đã cập nhật ghi chú xử lý cho đơn SO-${order.storeOrderId}.`,
       );
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to update processing note.",
+        error?.response?.data?.message || "Cập nhật ghi chú xử lý thất bại.",
       );
     }
   };
@@ -278,7 +296,7 @@ const IncomingOrdersPage: React.FC = () => {
           subtitle="View and review store orders submitted to the central kitchen"
         />
         <div className="rounded-lg border bg-background p-6 text-sm text-destructive">
-          Missing centralKitchenId in current login session.
+          Thiếu centralKitchenId trong phiên đăng nhập hiện tại.
         </div>
       </div>
     );
@@ -292,7 +310,7 @@ const IncomingOrdersPage: React.FC = () => {
           subtitle="View and review store orders submitted to the central kitchen"
         />
         <div className="rounded-lg border bg-background p-6 text-sm text-destructive">
-          Failed to load incoming orders.
+          Không thể tải danh sách đơn hàng đến.
         </div>
       </div>
     );
@@ -318,17 +336,17 @@ const IncomingOrdersPage: React.FC = () => {
         loading={isLoading}
         lockingOrderId={
           lockIncomingOrderMutation.isPending
-            ? lockIncomingOrderMutation.variables?.orderId ?? null
+            ? (lockIncomingOrderMutation.variables?.orderId ?? null)
             : null
         }
         receivingOrderId={
           receiveIncomingOrderMutation.isPending
-            ? receiveIncomingOrderMutation.variables?.orderId ?? null
+            ? (receiveIncomingOrderMutation.variables?.orderId ?? null)
             : null
         }
         forwardingOrderId={
           forwardIncomingOrderMutation.isPending
-            ? forwardIncomingOrderMutation.variables?.orderId ?? null
+            ? (forwardIncomingOrderMutation.variables?.orderId ?? null)
             : null
         }
         onViewDetail={handleViewDetail}
@@ -348,22 +366,35 @@ const IncomingOrdersPage: React.FC = () => {
         centralKitchenId={centralKitchenId}
       />
 
-      <AlertDialog open={!!confirmForwardAction} onOpenChange={(open) => !open && setConfirmForwardAction(null)}>
+      <AlertDialog
+        open={!!confirmForwardAction}
+        onOpenChange={(open) => !open && setConfirmForwardAction(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận Chuyển Cung ứng</AlertDialogTitle>
-            <AlertDialogDescription className="text-base text-foreground mt-2">
-              Bạn có chắc chắn chuyển đơn hàng <span className="font-semibold text-primary">#{confirmForwardAction?.order?.storeOrderId}</span> sang bộ phận Cung ứng chưa?
-              <br/><br/>
-              <span className="text-destructive font-semibold">Cảnh báo:</span> Các sản phẩm không đủ tồn kho tại Bếp Trung tâm sẽ bị loại bỏ (drop) khỏi đơn hàng này!
+            <AlertDialogTitle>Xác nhận chuyển Cung ứng</AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 text-base text-foreground">
+              Bạn có chắc chắn muốn chuyển đơn hàng{" "}
+              <span className="font-semibold text-primary">
+                #{confirmForwardAction?.order?.storeOrderId}
+              </span>{" "}
+              sang bộ phận Cung ứng không?
+              <br />
+              <br />
+              <span className="font-semibold text-destructive">Cảnh báo:</span>{" "}
+              Các sản phẩm không đủ tồn kho tại Bếp Trung tâm sẽ bị loại bỏ
+              (drop) khỏi đơn hàng này.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy bỏ</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => {
                 if (confirmForwardAction) {
-                  handleForwardOrder(confirmForwardAction.order, confirmForwardAction.note);
+                  handleForwardOrder(
+                    confirmForwardAction.order,
+                    confirmForwardAction.note,
+                  );
                   setConfirmForwardAction(null);
                 }
               }}

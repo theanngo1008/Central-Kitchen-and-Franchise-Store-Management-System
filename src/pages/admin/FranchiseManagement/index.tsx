@@ -261,6 +261,7 @@ const FranchiseManagement: React.FC = () => {
         onOpenChange={setOpen}
         selected={selected}
         kitchenOptions={kitchenOptions}
+        existingFranchises={items}
         onCreate={handleCreate}
         onUpdate={handleUpdate}
       />
