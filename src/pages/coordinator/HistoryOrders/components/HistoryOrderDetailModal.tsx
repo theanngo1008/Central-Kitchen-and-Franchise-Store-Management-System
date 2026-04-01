@@ -6,30 +6,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useIncomingOrderDetail } from "@/hooks/coordinator/useSupplyHistory";
+import { useStoreOrderDetail } from "@/hooks/storeOrders/useStoreOrderDetail";
 import { authApi } from "@/api/auth";
 import { Box, FlaskConical, Loader2, Calendar, User, FileText } from "lucide-react";
 
 interface HistoryOrderDetailModalProps {
   orderId: number | null;
+  storeId: number | null;
+  storeName: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
 const HistoryOrderDetailModal: React.FC<HistoryOrderDetailModalProps> = ({
   orderId,
+  storeId,
+  storeName,
   isOpen,
   onClose,
 }) => {
   const currentUser = authApi.getCurrentUser();
   const centralKitchenId = Number(currentUser?.centralKitchenId) || 0;
 
-  const { data: response, isLoading } = useIncomingOrderDetail(
-    centralKitchenId,
+  const { data: response, isLoading } = useStoreOrderDetail(
+    storeId || 0,
     orderId || 0
   );
 
-  const order = response;
+  const order = response?.data;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -60,7 +64,7 @@ const HistoryOrderDetailModal: React.FC<HistoryOrderDetailModalProps> = ({
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">Cửa hàng:</span>
-                  <span>{order.storeName}</span>
+                  <span>{storeName}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -82,13 +86,6 @@ const HistoryOrderDetailModal: React.FC<HistoryOrderDetailModalProps> = ({
                   </div>
                 )}
               </div>
-              {order.storeNote && (
-                <div className="col-span-full pt-2 border-t flex items-start gap-2 text-sm">
-                  <FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <span className="font-medium">Ghi chú từ cửa hàng:</span>
-                  <span className="text-muted-foreground italic">{order.storeNote}</span>
-                </div>
-              )}
             </div>
 
             {/* Products Table */}
@@ -145,7 +142,7 @@ const HistoryOrderDetailModal: React.FC<HistoryOrderDetailModalProps> = ({
             )}
 
             {/* Ingredients Table */}
-            {order.ingredientItems.length > 0 && (
+            {(order.ingredientItems || []).length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <FlaskConical className="w-4 h-4 text-blue-600" />
@@ -162,7 +159,7 @@ const HistoryOrderDetailModal: React.FC<HistoryOrderDetailModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-blue-100">
-                      {order.ingredientItems.map((item) => (
+                      {(order.ingredientItems || []).map((item) => (
                         <tr key={item.ingredientId} className="hover:bg-blue-50/30">
                           <td className="px-4 py-3">
                             <div className="font-medium">{item.ingredientName}</div>

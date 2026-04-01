@@ -22,6 +22,8 @@ const HistoryOrders: React.FC = () => {
   const pageSize = 10;
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+  const [selectedStoreName, setSelectedStoreName] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const {
@@ -42,8 +44,10 @@ const HistoryOrders: React.FC = () => {
   const orders = response?.items || [];
   const totalPages = response?.totalPages || 1;
 
-  const handleOrderClick = (orderId: number) => {
+  const handleOrderClick = (orderId: number, storeId: number, storeName: string) => {
     setSelectedOrderId(orderId);
+    setSelectedStoreId(storeId);
+    setSelectedStoreName(storeName);
     setIsModalOpen(true);
   };
 
@@ -75,7 +79,7 @@ const HistoryOrders: React.FC = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="Tìm mã đơn, tên cửa hàng..."
+                  placeholder="Tìm tên cửa hàng..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -187,6 +191,8 @@ const HistoryOrders: React.FC = () => {
       {/* History Detail Modal */}
       <HistoryOrderDetailModal
         orderId={selectedOrderId}
+        storeId={selectedStoreId}
+        storeName={selectedStoreName}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />

@@ -451,12 +451,20 @@ const IngredientManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>Đơn vị tính <span className="text-destructive">*</span></Label>
-              <Input 
+              <Select
                 value={formData.unit}
-                onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                onValueChange={(val) => setFormData(prev => ({ ...prev, unit: val }))}
                 disabled={isViewMode}
-                placeholder="VD: g, ml, pcs..."
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn đơn vị..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="g">Gram (g)</SelectItem>
+                  <SelectItem value="ml">Mililit (ml)</SelectItem>
+                  <SelectItem value="pcs">Cái/Viên (pcs)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Nhà cung cấp <span className="text-destructive">*</span></Label>

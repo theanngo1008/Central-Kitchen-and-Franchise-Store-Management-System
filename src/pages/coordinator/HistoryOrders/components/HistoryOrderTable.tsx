@@ -14,7 +14,7 @@ import { ChevronRight, Calendar, User, Package } from "lucide-react";
 
 interface HistoryOrderTableProps {
   orders: SupplyProcessedOrderResponse[];
-  onOrderClick: (orderId: number) => void;
+  onOrderClick: (orderId: number, storeId: number, storeName: string) => void;
 }
 
 const HistoryOrderTable: React.FC<HistoryOrderTableProps> = ({
@@ -49,7 +49,7 @@ const HistoryOrderTable: React.FC<HistoryOrderTableProps> = ({
             <TableRow
               key={order.storeOrderId}
               className="cursor-pointer hover:bg-muted/30 transition-colors group"
-              onClick={() => onOrderClick(order.storeOrderId)}
+              onClick={() => onOrderClick(order.storeOrderId, order.storeId, order.storeName)}
             >
               <TableCell className="font-bold text-primary">
                 {order.orderCode}
