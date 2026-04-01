@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 
 import {
+  isDuplicateFranchiseName,
   normalizeText,
   validateFranchiseField,
   validateFranchiseForm,
@@ -36,6 +37,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   selected: AdminFranchise | null;
   kitchenOptions: CentralKitchenOption[];
+  existingFranchises: AdminFranchise[];
   onCreate: (payload: CreateFranchisePayload) => void | Promise<void>;
   onUpdate: (
     id: number,
@@ -50,6 +52,7 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
   onOpenChange,
   selected,
   kitchenOptions,
+  existingFranchises,
   onCreate,
   onUpdate,
 }) => {
@@ -107,8 +110,23 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
     location,
   });
 
+  const validateDuplicateName = (value: string) => {
+    const duplicated = isDuplicateFranchiseName({
+      name: value,
+      franchises: existingFranchises,
+      currentFranchiseId: selected?.franchiseId ?? null,
+    });
+
+    return duplicated ? "Tên cửa hàng đã được sử dụng" : undefined;
+  };
+
   const handleFieldBlur = (field: "name" | "address" | "location") => {
-    const message = validateFranchiseField(field, getFormData());
+    let message = validateFranchiseField(field, getFormData());
+
+    if (field === "name" && !message) {
+      message = validateDuplicateName(name);
+    }
+
     setErrors((prev) => ({
       ...prev,
       [field]: message,
@@ -146,6 +164,11 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
   const handleSubmit = async () => {
     const formData = getFormData();
     const nextErrors = validateFranchiseForm(formData);
+    const duplicateNameError = validateDuplicateName(name);
+
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
 
     setErrors(nextErrors);
 
@@ -225,6 +248,7 @@ export const FranchiseUpsertModal: React.FC<Props> = ({
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
+
                 if (errors.name) {
                   setErrors((prev) => ({ ...prev, name: undefined }));
                 }

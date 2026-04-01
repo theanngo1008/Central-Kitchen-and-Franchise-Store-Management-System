@@ -1,4 +1,7 @@
-import type { FranchiseStatus } from "@/types/admin/franchise.types";
+import type {
+  AdminFranchise,
+  FranchiseStatus,
+} from "@/types/admin/franchise.types";
 
 export type FranchiseFormErrors = {
   centralKitchenId?: string;
@@ -18,6 +21,34 @@ export type ValidateFranchiseFormInput = {
 
 export const normalizeText = (value: string) =>
   value.trim().replace(/\s+/g, " ");
+
+export const normalizeFranchiseName = (value: string) =>
+  normalizeText(value).toLowerCase();
+
+export const isDuplicateFranchiseName = ({
+  name,
+  franchises,
+  currentFranchiseId,
+}: {
+  name: string;
+  franchises: AdminFranchise[];
+  currentFranchiseId?: number | null;
+}) => {
+  const normalizedInputName = normalizeFranchiseName(name);
+
+  if (!normalizedInputName) return false;
+
+  return franchises.some((franchise) => {
+    const normalizedFranchiseName = normalizeFranchiseName(franchise.name || "");
+    const isSameFranchise =
+      currentFranchiseId != null &&
+      franchise.franchiseId === currentFranchiseId;
+
+    if (isSameFranchise) return false;
+
+    return normalizedFranchiseName === normalizedInputName;
+  });
+};
 
 export const validateFranchiseForm = (
   data: ValidateFranchiseFormInput,
