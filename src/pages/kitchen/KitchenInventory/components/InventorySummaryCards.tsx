@@ -32,13 +32,7 @@ const InventorySummaryCards: React.FC<Props> = ({
         <p className="text-2xl font-semibold">{totalBatches}</p>
       </div>
 
-      <div className="rounded-xl border bg-card p-4">
-        <div className="mb-1 flex items-center gap-2 text-muted-foreground">
-          <Scale size={16} />
-          <span className="text-sm">Tổng số lượng</span>
-        </div>
-        <p className="text-2xl font-semibold">{totalQuantity}</p>
-      </div>
+      
 
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-1 flex items-center gap-2 text-muted-foreground">
