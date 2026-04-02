@@ -225,14 +225,7 @@ const ManagerDashboard: React.FC = () => {
               variant="primary" 
               onClick={() => navigate('/manager/reports')}
             />
-            <MetricCard 
-              title="Giao đúng hạn" 
-              value={formatPercent(data.serviceLevelSummary.onTimeRate)} 
-              subtitle={`${data.serviceLevelSummary.onTimeDeliveredCount} / ${data.serviceLevelSummary.totalDeliveriesDeliveredInRange} chuyến`} 
-              icon={Clock} 
-              variant={data.serviceLevelSummary.onTimeRate >= 0.9 ? 'success' : 'warning'} 
-              onClick={() => navigate('/manager/reports')}
-            />
+            
             <MetricCard 
               title="Cửa hàng hoạt động" 
               value={data.franchiseCount.toString()} 

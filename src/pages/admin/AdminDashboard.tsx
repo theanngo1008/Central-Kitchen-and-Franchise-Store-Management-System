@@ -216,7 +216,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`${data.franchiseSummary.active} Hoạt động | ${data.franchiseSummary.inactive} Vô hiệu`} 
           icon={Store} 
           variant="success" 
-          onClick={() => navigate('/admin/franchises')}
+          onClick={() => navigate('/admin/locations')}
         />
         <MetricCard 
           title="Bếp Trung Tâm / CK" 
@@ -224,7 +224,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`${data.centralKitchenSummary.active} Hoạt động | ${data.centralKitchenSummary.inactive} Vô hiệu`} 
           icon={Store} 
           variant="warning" 
-          onClick={() => navigate('/admin/franchises')}
+          onClick={() => navigate('/admin/locations')}
         />
         <MetricCard 
           title="Hồ sơ tài khoản" 

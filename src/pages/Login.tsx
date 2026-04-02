@@ -63,17 +63,10 @@ const Login: React.FC = () => {
           </p>
 
           <div className="mt-12 grid grid-cols-2 gap-4">
-            <div className="bg-white/10 backdrop-blur rounded-xl p-4">
-              <p className="text-3xl font-bold">156</p>
-              <p className="text-sm text-primary-foreground/70">Đơn hàng hôm nay</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-xl p-4">
-              <p className="text-3xl font-bold">94%</p>
-              <p className="text-sm text-primary-foreground/70">Tỷ lệ giao hàng</p>
-            </div>
+           
           </div>
         </div>
-        
+      
         {/* Decorative elements */}
         <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-white/5" />
         <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full bg-white/5" />
